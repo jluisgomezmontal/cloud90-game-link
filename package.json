@@ -1,0 +1,11 @@
+{
+  "name": "cloud90-hades-link",
+  "private": true,
+  "description": "Tests for the Cloud90 Hades mod (Lua run with fengari against a fake engine).",
+  "scripts": {
+    "test": "node tests/run.js"
+  },
+  "devDependencies": {
+    "fengari": "0.1.4"
+  }
+}
