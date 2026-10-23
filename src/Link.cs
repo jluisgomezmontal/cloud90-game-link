@@ -113,6 +113,13 @@ namespace Cloud90.HadesLink
                 // being refused (token, access, version) waits a minute.
                 if (connectedAt != DateTime.MinValue && DateTime.UtcNow - connectedAt > TimeSpan.FromSeconds(30)) backoff = TimeSpan.FromSeconds(2);
                 if (closeCode == 4401 || closeCode == 4403 || closeCode == 4426 || closeCode == 4400) backoff = TimeSpan.FromSeconds(60);
+                // Too many attempts or bad tokens from this IP: the server
+                // keeps refusing for a while, so don't knock every few seconds.
+                if (error.Contains("(429)"))
+                {
+                    error = "Cloud90 pide esperar (demasiados intentos desde esta red)";
+                    backoff = TimeSpan.FromSeconds(60);
+                }
                 SetStatus("desconectado: " + error + "; reintento en " + (int)backoff.TotalSeconds + " s");
                 try { await Task.Delay(backoff, cancel); }
                 catch (OperationCanceledException) { return; }
