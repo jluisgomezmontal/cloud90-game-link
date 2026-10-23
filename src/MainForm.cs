@@ -4,8 +4,15 @@
 using System;
 using System.Drawing;
 using System.IO;
+using System.Net;
+using System.Runtime.Versioning;
 using System.Threading;
 using System.Windows.Forms;
+
+// Built with the in-box csc, which marks no framework: without this the
+// runtime keeps .NET 4.0's defaults (no TLS 1.2), and Cloud90's server only
+// speaks TLS 1.2+.
+[assembly: TargetFramework(".NETFramework,Version=v4.8", FrameworkDisplayName = ".NET Framework 4.8")]
 
 namespace Cloud90.HadesLink
 {
@@ -221,6 +228,8 @@ namespace Cloud90.HadesLink
                     MessageBox.Show("Cloud90 Hades Link ya está abierto.", "Cloud90 Hades Link");
                     return;
                 }
+                // TLS 1.2 at least, whatever the machine's .NET defaults are.
+                ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
                 Application.Run(new MainForm());

@@ -70,6 +70,22 @@ namespace Cloud90.HadesLink
             return failures;
         }
 
+        // The real server with a made-up token: the TLS handshake has to work
+        // (the server then refuses the token). Returns what the Link said.
+        public static string RealServer(string server)
+        {
+            System.Net.ServicePointManager.SecurityProtocol |= System.Net.SecurityProtocolType.Tls12;
+            Settings s = new Settings();
+            s.Server = server;
+            s.Token = "c90gl_not_a_real_token";
+            Link link = new Link(delegate { return s; });
+            StringBuilder said = new StringBuilder();
+            link.Status += delegate (string text) { lock (said) said.AppendLine(text); };
+            link.Start();
+            Thread.Sleep(9000);
+            lock (said) return said.ToString();
+        }
+
         // Against tests/fake-server.js: connects, says hello, gets an effect
         // into the inbox, and answers it as the mod would.
         public static int Protocol(string server, string inboxPath)

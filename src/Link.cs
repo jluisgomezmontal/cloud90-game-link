@@ -31,6 +31,7 @@ namespace Cloud90.HadesLink
         Inbox inbox;
         bool paused;
         bool inPlay;
+        bool welcomed;  // this connection got Cloud90's "welcome"
 
         public event Action<string> Status;  // for the window
 
@@ -80,16 +81,25 @@ namespace Cloud90.HadesLink
                     ws.Options.SetRequestHeader("Authorization", "Bearer " + s.Token);
                     Uri uri = new Uri(s.Server.TrimEnd('/').Replace("https://", "wss://").Replace("http://", "ws://") + "/api/game-link/ws");
                     SetStatus("conectando…");
+                    welcomed = false;
                     await ws.ConnectAsync(uri, cancel);
                     socket = ws;
                     connectedAt = DateTime.UtcNow;
                     await Send(new Dictionary<string, object> { { "type", "hello" }, { "game", Game }, { "version", Version } });
                     Task pinger = Ping(ws, cancel);
                     await Receive(ws, cancel);
-                    if (ws.CloseStatus.HasValue)
+                    if (ws.CloseStatus.HasValue && ws.CloseStatus.Value != WebSocketCloseStatus.Empty)
                     {
                         closeCode = (int)ws.CloseStatus.Value;
                         if (!string.IsNullOrEmpty(ws.CloseStatusDescription)) error = ws.CloseStatusDescription;
+                    }
+                    // .NET Framework's WebSocket drops Cloud90's own close codes
+                    // (4401 token, 4403 access, 4426 version): closed before the
+                    // welcome is one of those.
+                    if (!welcomed && closeCode == 0)
+                    {
+                        closeCode = 4401;
+                        error = "Cloud90 rechazó la conexión: revisa tu token (genera uno nuevo en Juegos › Hades), tu acceso o actualiza el Link";
                     }
                 }
                 catch (OperationCanceledException) { return; }
@@ -152,6 +162,7 @@ namespace Cloud90.HadesLink
             string type = Str(msg, "type");
             if (type == "welcome")
             {
+                welcomed = true;
                 SetStatus("conectado a Cloud90");
                 await SendState();
             }
