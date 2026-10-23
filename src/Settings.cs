@@ -22,7 +22,10 @@ namespace Cloud90.HadesLink
         {
             get
             {
-                string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Cloud90HadesLink");
+                // CLOUD90_HADES_LINK_DIR: tests keep their log and settings apart.
+                string dir = Environment.GetEnvironmentVariable("CLOUD90_HADES_LINK_DIR");
+                if (string.IsNullOrEmpty(dir))
+                    dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Cloud90HadesLink");
                 Directory.CreateDirectory(dir);
                 return dir;
             }
