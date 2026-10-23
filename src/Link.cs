@@ -15,11 +15,12 @@ namespace Cloud90.HadesLink
     internal sealed class Link
     {
         public const string Game = "hades";
-        public const string Version = "cloud90-hades-link-1.0.0";
+        public const string Version = "cloud90-hades-link-1.1.0";
         static readonly TimeSpan PingEvery = TimeSpan.FromSeconds(20);
         // An effect the game doesn't answer in this long is refused.
         static readonly TimeSpan AckTimeout = TimeSpan.FromSeconds(10);
         static readonly Regex EffectName = new Regex("^[a-z0-9_]{1,40}$");
+        static readonly Regex ArgValue = new Regex("^[A-Za-z0-9_]{0,40}$");
 
         readonly Func<Settings> settings;
         readonly JavaScriptSerializer json = new JavaScriptSerializer();
@@ -200,6 +201,8 @@ namespace Cloud90.HadesLink
                 item.Ms = Math.Max(0, Math.Min(ms, 120000));
                 item.By = Str(msg, "by");
                 item.Safe = msg.ContainsKey("safe") && msg["safe"] is bool && (bool)msg["safe"];
+                string arg = Str(msg, "arg");
+                item.Arg = ArgValue.IsMatch(arg) ? arg : "";
                 item.Sent = DateTime.UtcNow;
                 inbox.Add(item);
             }

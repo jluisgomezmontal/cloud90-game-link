@@ -123,6 +123,8 @@ namespace Cloud90.HadesLink
             public int Ms;
             public string By;
             public bool Safe;
+            // The streamer's pick for the effect (an enemy's name), or "".
+            public string Arg = "";
             public DateTime Sent;
         }
 
@@ -182,7 +184,8 @@ namespace Cloud90.HadesLink
                  .Append(", effect = ").Append(LuaString(i.Effect))
                  .Append(", ms = ").Append(i.Ms)
                  .Append(", by = ").Append(LuaString(i.By))
-                 .Append(", safe = ").Append(i.Safe ? "true" : "false").Append(" },\n");
+                 .Append(", safe = ").Append(i.Safe ? "true" : "false")
+                 .Append(", arg = ").Append(LuaString(i.Arg)).Append(" },\n");
             }
             b.Append("  },\n}\n");
             try

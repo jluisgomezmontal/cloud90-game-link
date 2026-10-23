@@ -107,7 +107,7 @@ namespace Cloud90.HadesLink
                 if (text.Contains("\"e-42\"")) break;
                 Thread.Sleep(200);
             }
-            Check(text.Contains("effect = \"slow\"") && text.Contains("ms = 15000") && text.Contains("safe = true"), "the effect reached the inbox");
+            Check(text.Contains("effect = \"slow\"") && text.Contains("ms = 15000") && text.Contains("safe = true") && text.Contains("arg = \"HeavyMelee\""), "the effect reached the inbox");
             link.OnModLine("ack e-42 escudo activo");
             Thread.Sleep(1500);
             Check(!File.ReadAllText(inboxPath, Encoding.UTF8).Contains("e-42"), "acked effects leave the inbox");

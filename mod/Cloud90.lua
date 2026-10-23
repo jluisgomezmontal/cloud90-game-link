@@ -21,7 +21,7 @@ kills him; with "Modo sin morir" (safe) the last Death Defiance is kept too.
 Cloud90 = Cloud90 or {}
 local C = Cloud90
 
-C.Version = "1.0.0"
+C.Version = "1.1.0"
 C.Seen = C.Seen or {}          -- effect id -> true
 C.SeenOrder = C.SeenOrder or {}
 C.Active = C.Active or {}      -- timed slot -> { name, untilT, stop }
@@ -241,9 +241,33 @@ local function zoneEnemies( elite )
 	return names
 end
 
+-- The streamer's pick (e.arg, an enemy's base name: "HeavyMelee"), if it's
+-- one of this zone's; else nil, and one of the zone's at random comes.
+local function chosenEnemy( arg, elite )
+	if type( arg ) ~= "string" or arg == "" then
+		return nil
+	end
+	local b = biome()
+	local set = EnemySets ~= nil and b ~= nil and EnemySets[ "EnemiesBiome" .. b ] or nil
+	if set == nil or EnemyData == nil then
+		return nil
+	end
+	local candidate = elite and ( arg .. "Elite" ) or arg
+	for _, name in ipairs( set ) do
+		if name == arg or name == arg .. "Elite" then
+			return EnemyData[candidate] ~= nil and candidate or nil
+		end
+	end
+	return nil
+end
+
 local function spawnEnemies( count, elite )
 	return function( e )
 		local names = zoneEnemies( elite )
+		local chosen = chosenEnemy( e.arg, elite )
+		if chosen ~= nil then
+			names = { chosen }
+		end
 		if #names == 0 then
 			return false, NA
 		end

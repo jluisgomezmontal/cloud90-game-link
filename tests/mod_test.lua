@@ -129,7 +129,7 @@ end
 
 -- ─────────────────────────── load ───────────────────────────
 dofile( MOD_PATH )
-check( out[ #out ] == "CLOUD90 hello 1.0.0", "says hello on load" )
+check( out[ #out ] == "CLOUD90 hello 1.1.0", "says hello on load" )
 check( onLoad ~= nil, "hooks OnAnyLoad" )
 onLoad( {} )
 step( 1 )
@@ -237,6 +237,21 @@ local spawned = 0
 for _, c in ipairs( calls ) do if c:match( "^Spawn:" ) then spawned = spawned + 1 end end
 check( spawned == 3, "three of them" )
 check( send( "spawn_elite" ) == "ok" and hasCall( "Spawn:HeavyMeleeElite" ), "an elite" )
+local function spawnsSince( from )
+	local list = {}
+	for i = from + 1, #calls do if calls[i]:match( "^Spawn:" ) then table.insert( list, calls[i] ) end end
+	return list
+end
+local mark = #calls
+check( send( "spawn_elite", { arg = "HeavyMelee" } ) == "ok" and spawnsSince( mark )[1] == "Spawn:HeavyMeleeElite", "the chosen elite" )
+mark = #calls
+check( send( "spawn_enemies", { arg = "PunchingBagUnit" } ) == "ok", "the chosen enemy" )
+local three = spawnsSince( mark )
+check( #three == 3 and three[1] == "Spawn:PunchingBagUnit" and three[3] == "Spawn:PunchingBagUnit", "three of the chosen one" )
+mark = #calls
+check( send( "spawn_elite", { arg = "ShadeSwordUnit" } ) == "ok", "another zone's elite: one of this zone's instead" )
+local fallback = spawnsSince( mark )
+check( #fallback == 1 and fallback[1] == "Spawn:HeavyMeleeElite", "this zone's elite came" )
 CurrentRun.CurrentRoom = newRoom( "Elysium" )
 step( 30 )
 check( send( "spawn_enemies" ) == "no disponible ahora", "no enemy list for this zone: refused" )
