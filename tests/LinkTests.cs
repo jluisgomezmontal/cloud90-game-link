@@ -6,7 +6,7 @@ using System.IO;
 using System.Text;
 using System.Threading;
 
-namespace Cloud90.HadesLink
+namespace Cloud90.GameLink
 {
     public static class LinkTests
     {
@@ -70,6 +70,78 @@ namespace Cloud90.HadesLink
             return failures;
         }
 
+        // MAME: the plugin goes in plugins\cloud90 and comes out whole; what's
+        // missing is said by name; tokens are kept per game.
+        public static int Mame(string root)
+        {
+            Directory.CreateDirectory(Path.Combine(root, "roms"));
+            File.WriteAllText(Path.Combine(root, "mame.exe"), "");
+            Check(MameFolder.IsMame(root), "a MAME folder is recognized");
+            Check(MameFolder.Missing(root, "kof2002", "neogeo").Contains("kof2002.zip"), "the ROM is asked for");
+            File.WriteAllText(Path.Combine(root, "roms", "kof2002.zip"), "");
+            Check(MameFolder.Missing(root, "kof2002", "neogeo").Contains("neogeo.zip"), "then the BIOS");
+            File.WriteAllText(Path.Combine(root, "roms", "neogeo.zip"), "");
+            Check(MameFolder.Missing(root, "kof2002", "neogeo") == "", "nothing missing");
+            MamePlugin.FileText = delegate (string name) { return "-- " + name; };
+            MamePlugin.Install(root);
+            Check(File.ReadAllText(Path.Combine(root, "plugins", "cloud90", "init.lua")) == "-- cloud90-mame-init.lua", "plugin init.lua");
+            Check(File.Exists(Path.Combine(root, "plugins", "cloud90", "plugin.json")), "plugin.json");
+            MamePlugin.Uninstall(root);
+            Check(!Directory.Exists(Path.Combine(root, "plugins", "cloud90")), "plugin removed");
+
+            Settings s = new Settings();
+            s.Tokens["hades"] = "c90gl_a";
+            s.Tokens["kof2002"] = "c90gl_b";
+            s.MameDir = root;
+            s.Save();
+            Settings back = Settings.Load();
+            Check(back.TokenFor("hades") == "c90gl_a" && back.TokenFor("kof2002") == "c90gl_b" && back.MameDir == root, "tokens per game survive a restart");
+            return failures;
+        }
+
+        // Real MAME + KOF 2002 against tests/fake-server.js: the app installs
+        // the plugin, opens the game (no window, a script plays it), and the
+        // effect the server sends once a round is on is applied and acked.
+        public static int MameEndToEnd(string server, string mame, string driver)
+        {
+            Settings s = new Settings();
+            s.Server = server;
+            s.MameDir = mame;
+            s.Tokens["kof2002"] = "c90gl_test";
+            Link link = new Link(delegate { return s; }, "kof2002", "KOF 2002");
+            MamePlugin.FileText = delegate (string name)
+            {
+                string dir = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(driver)), "..", "mame", "plugins", "cloud90");
+                return File.ReadAllText(Path.Combine(dir, name == "cloud90-mame-init.lua" ? "init.lua" : "plugin.json"));
+            };
+            MamePlugin.Install(mame);
+            link.UseInbox(new Inbox(MameProcess.InboxPath));
+            MameProcess.ExtraArgs = "-video none -sound none -nothrottle -autoboot_script \"" + driver + "\" -seconds_to_run 90";
+            MameProcess game = new MameProcess();
+            StringBuilder lines = new StringBuilder();
+            game.GameLine += delegate (string line) { lock (lines) lines.AppendLine(line); link.OnModLine(line); };
+            bool exited = false;
+            game.Exited += delegate { exited = true; };
+            link.Start();
+            game.Start(mame, "kof2002");
+            DateTime limit = DateTime.UtcNow + TimeSpan.FromSeconds(150);
+            while (!exited && DateTime.UtcNow < limit)
+            {
+                lock (lines) if (lines.ToString().Contains("ack e-42")) break;
+                Thread.Sleep(250);
+            }
+            Thread.Sleep(1500);
+            string got;
+            lock (lines) got = lines.ToString();
+            Console.WriteLine(got);
+            Check(got.Contains("hello 1.0.0 kof2002"), "the plugin said hello");
+            Check(got.Contains("state 1"), "a round came");
+            Check(got.Contains("ack e-42 ok"), "the server's effect was applied");
+            foreach (System.Diagnostics.Process p in System.Diagnostics.Process.GetProcessesByName("mame")) { try { p.Kill(); } catch (Exception) { } }
+            MamePlugin.Uninstall(mame);
+            return failures;
+        }
+
         // The real server with a made-up token: the TLS handshake has to work
         // (the server then refuses the token). Returns what the Link said.
         public static string RealServer(string server)
@@ -77,8 +149,8 @@ namespace Cloud90.HadesLink
             System.Net.ServicePointManager.SecurityProtocol |= System.Net.SecurityProtocolType.Tls12;
             Settings s = new Settings();
             s.Server = server;
-            s.Token = "c90gl_not_a_real_token";
-            Link link = new Link(delegate { return s; });
+            s.Tokens["hades"] = "c90gl_not_a_real_token";
+            Link link = new Link(delegate { return s; }, "hades", "Hades");
             StringBuilder said = new StringBuilder();
             link.Status += delegate (string text) { lock (said) said.AppendLine(text); };
             link.Start();
@@ -92,8 +164,8 @@ namespace Cloud90.HadesLink
         {
             Settings s = new Settings();
             s.Server = server;
-            s.Token = "c90gl_test";
-            Link link = new Link(delegate { return s; });
+            s.Tokens["kof2002"] = "c90gl_test";
+            Link link = new Link(delegate { return s; }, "kof2002", "KOF 2002");
             Inbox inbox = new Inbox(inboxPath);
             link.UseInbox(inbox);
             link.Start();

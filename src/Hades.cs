@@ -1,5 +1,6 @@
-// Cloud90 Hades Link: finding Hades, installing the mod, the inbox the mod
-// reads, and running the game to read its console.
+// Cloud90 Game Link, Hades: finding the game, installing the mod, the inbox
+// the game side reads (shared with MAME), and running Hades to read its
+// console.
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -9,7 +10,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Win32;
 
-namespace Cloud90.HadesLink
+namespace Cloud90.GameLink
 {
     internal static class HadesFolder
     {

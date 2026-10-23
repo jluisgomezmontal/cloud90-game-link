@@ -7,7 +7,7 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $work = Join-Path ([IO.Path]::GetTempPath()) ('c90hl-test-' + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Force $work | Out-Null
-$env:CLOUD90_HADES_LINK_DIR = Join-Path $work 'data'
+$env:CLOUD90_GAME_LINK_DIR = Join-Path $work 'data'
 $failed = 0
 try {
     $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
@@ -16,7 +16,7 @@ try {
     & $csc /nologo /target:library "/out:$dll" /r:System.Web.Extensions.dll /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Security.dll /r:System.Core.dll @sources
     if ($LASTEXITCODE -ne 0) { throw 'csc failed' }
     [Reflection.Assembly]::LoadFrom($dll) | Out-Null
-    $t = [Cloud90.HadesLink.LinkTests]
+    $t = [Cloud90.GameLink.LinkTests]
 
     # 1. Inbox, read back by Lua.
     $inbox = Join-Path $work 'inbox.lua'
@@ -28,6 +28,9 @@ try {
     # 2. Installer.
     $failed += $t::Installer((Join-Path $work 'Hades'))
 
+    # 2b. MAME.
+     $failed += $t::Mame((Join-Path $work 'Mame'))
+
     # 3. Protocol.
     if ($WsModule) { $env:WS_MODULE = $WsModule }
     $env:PORT = '39090'
@@ -38,7 +41,7 @@ try {
     $server.WaitForExit(5000) | Out-Null
     $got = Get-Content $log
     $got | ForEach-Object { "  server: $_" }
-    if (-not ($got -match '"type":"hello","game":"hades"')) { "FAIL: no hello"; $failed++ }
+    if (-not ($got -match '"type":"hello","game":"kof2002","version":"cloud90-game-link-1.0.0"')) { "FAIL: no hello"; $failed++ }
     if (-not ($got -match '"type":"ack","id":"e-42","ok":false,"reason":"escudo activo"')) { "FAIL: no ack"; $failed++ }
     if (-not $server.HasExited) { $server.Kill() }
 }

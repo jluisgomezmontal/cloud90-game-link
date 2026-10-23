@@ -17,10 +17,10 @@ server.on('upgrade', (req, socket, head) => {
     ws.on('message', (data) => {
       const msg = JSON.parse(data.toString());
       console.log('GOT ' + JSON.stringify(msg));
-      if (msg.type === 'hello') ws.send(JSON.stringify({ type: 'welcome', game: 'hades' }));
+      if (msg.type === 'hello') ws.send(JSON.stringify({ type: 'welcome', game: msg.game }));
       if (msg.type === 'state' && msg.inPlay && !sent) {
         sent = true;
-        ws.send(JSON.stringify({ type: 'effect', id: 'e-42', effect: 'slow', ms: 15000, by: 'Ana', safe: true, arg: 'HeavyMelee' }));
+        ws.send(JSON.stringify({ type: 'effect', id: 'e-42', effect: process.env.FAKE_EFFECT || 'slow', ms: 15000, by: 'Ana', safe: true, arg: 'HeavyMelee' }));
       }
       if (msg.type === 'ack') setTimeout(() => process.exit(0), 200);
     });

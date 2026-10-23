@@ -1,4 +1,4 @@
-// Cloud90 Hades Link: the connection to Cloud90, in the same protocol as
+// Cloud90 Game Link: one game's connection to Cloud90, in the same protocol as
 // Nebula's link (PLAN-GAME-LINK.md): a WebSocket to /api/game-link/ws with
 // the game's token, "hello", then effects in and acks/state out.
 using System;
@@ -10,12 +10,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 
-namespace Cloud90.HadesLink
+namespace Cloud90.GameLink
 {
     internal sealed class Link
     {
-        public const string Game = "hades";
-        public const string Version = "cloud90-hades-link-1.1.0";
+        public const string Version = "cloud90-game-link-1.0.0";
+        // "hades", "kof2002": the token and the hello are this game's.
+        public readonly string Game;
+        readonly string title;
         static readonly TimeSpan PingEvery = TimeSpan.FromSeconds(20);
         // An effect the game doesn't answer in this long is refused.
         static readonly TimeSpan AckTimeout = TimeSpan.FromSeconds(10);
@@ -36,11 +38,16 @@ namespace Cloud90.HadesLink
 
         public event Action<string> Status;  // for the window
 
-        public Link(Func<Settings> settings) { this.settings = settings; }
+        public Link(Func<Settings> settings, string game, string title)
+        {
+            this.settings = settings;
+            Game = game;
+            this.title = title;
+        }
 
         public bool Paused { get { return paused; } }
 
-        // The mod's inbox once Hades is found; effects wait for it.
+        // The game's inbox once the game is found; effects wait for it.
         public void UseInbox(Inbox value) { inbox = value; inbox.SetPaused(paused); }
 
         public void Start()
@@ -57,7 +64,7 @@ namespace Cloud90.HadesLink
 
         void SetStatus(string text)
         {
-            Log.Write(text);
+            Log.Write(title + ": " + text);
             Action<string> handler = Status;
             if (handler != null) handler(text);
         }
@@ -68,7 +75,8 @@ namespace Cloud90.HadesLink
             while (!cancel.IsCancellationRequested && mine == generation)
             {
                 Settings s = settings();
-                if (s.Token.Length == 0)
+                string token = s.TokenFor(Game);
+                if (token.Length == 0)
                 {
                     SetStatus("sin token: pégalo con «Pegar token»");
                     return;
@@ -79,7 +87,7 @@ namespace Cloud90.HadesLink
                 ClientWebSocket ws = new ClientWebSocket();
                 try
                 {
-                    ws.Options.SetRequestHeader("Authorization", "Bearer " + s.Token);
+                    ws.Options.SetRequestHeader("Authorization", "Bearer " + token);
                     Uri uri = new Uri(s.Server.TrimEnd('/').Replace("https://", "wss://").Replace("http://", "ws://") + "/api/game-link/ws");
                     SetStatus("conectando…");
                     welcomed = false;
@@ -100,7 +108,7 @@ namespace Cloud90.HadesLink
                     if (!welcomed && closeCode == 0)
                     {
                         closeCode = 4401;
-                        error = "Cloud90 rechazó la conexión: revisa tu token (genera uno nuevo en Juegos › Hades), tu acceso o actualiza el Link";
+                        error = "Cloud90 rechazó la conexión: revisa tu token (genera uno nuevo en Juegos › " + title + "), tu acceso o actualiza el Link";
                     }
                 }
                 catch (OperationCanceledException) { return; }
@@ -214,7 +222,7 @@ namespace Cloud90.HadesLink
             return msg.TryGetValue(key, out v) && v != null ? v.ToString() : "";
         }
 
-        // The mod's lines, from Hades' console.
+        // The game side's lines (Hades' console, MAME's acks.txt).
         public void OnModLine(string line)
         {
             if (line.StartsWith("ack "))
@@ -226,7 +234,7 @@ namespace Cloud90.HadesLink
                 string result = rest.Substring(space + 1).Trim();
                 if (inbox != null) inbox.Take(id);
                 bool ok = result == "ok";
-                Log.Write("efecto " + id + ": " + result);
+                Log.Write(title + ": efecto " + id + ": " + result);
                 Fire(Ack(id, ok, ok ? null : result));
             }
             else if (line.StartsWith("state "))
@@ -236,7 +244,7 @@ namespace Cloud90.HadesLink
             }
             else
             {
-                Log.Write("mod: " + line);
+                Log.Write(title + ": juego: " + line);
             }
         }
 

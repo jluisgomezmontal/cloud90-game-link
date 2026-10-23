@@ -1,31 +1,41 @@
-// Cloud90 Hades Link: where things are kept between sessions.
-// %LOCALAPPDATA%\Cloud90HadesLink\link.ini (server, Hades folder, token
-// sealed with DPAPI for this Windows user) and link.log.
+// Cloud90 Game Link: what's kept between sessions.
+// %LOCALAPPDATA%\Cloud90GameLink\link.ini (server, each game's folder, each
+// game's token sealed with DPAPI for this Windows user) and link.log. The
+// first time, Cloud90 Hades Link's settings are brought over.
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Cloud90.HadesLink
+namespace Cloud90.GameLink
 {
     internal sealed class Settings
     {
         public const string DefaultServer = "https://backcloud90devstreamkit.onrender.com";
-        static readonly byte[] Entropy = Encoding.UTF8.GetBytes("Cloud90HadesLink");
+        static readonly byte[] Entropy = Encoding.UTF8.GetBytes("Cloud90GameLink");
+        static readonly byte[] HadesLinkEntropy = Encoding.UTF8.GetBytes("Cloud90HadesLink");
 
         public string Server = DefaultServer;
         public string HadesDir = "";
-        public string Token = "";
+        public string MameDir = "";
+        // game id ("hades", "kof2002") -> its token
+        public readonly Dictionary<string, string> Tokens = new Dictionary<string, string>();
 
+        public string TokenFor(string game)
+        {
+            string t;
+            return Tokens.TryGetValue(game, out t) ? t : "";
+        }
+
+        // CLOUD90_GAME_LINK_DIR: tests keep their log and settings apart.
         public static string DataDir
         {
             get
             {
-                // CLOUD90_HADES_LINK_DIR: tests keep their log and settings apart.
-                string dir = Environment.GetEnvironmentVariable("CLOUD90_HADES_LINK_DIR");
+                string dir = Environment.GetEnvironmentVariable("CLOUD90_GAME_LINK_DIR");
                 if (string.IsNullOrEmpty(dir))
-                    dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Cloud90HadesLink");
+                    dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Cloud90GameLink");
                 Directory.CreateDirectory(dir);
                 return dir;
             }
@@ -36,7 +46,11 @@ namespace Cloud90.HadesLink
         public static Settings Load()
         {
             Settings s = new Settings();
-            if (!File.Exists(FilePath)) return s;
+            if (!File.Exists(FilePath))
+            {
+                s.ImportHadesLink();
+                return s;
+            }
             foreach (string raw in File.ReadAllLines(FilePath, Encoding.UTF8))
             {
                 string line = raw.Trim();
@@ -46,9 +60,34 @@ namespace Cloud90.HadesLink
                 string value = line.Substring(eq + 1).Trim();
                 if (key == "server" && value.Length > 0) s.Server = value;
                 else if (key == "hades_dir") s.HadesDir = value;
-                else if (key == "token_protected") s.Token = Unseal(value);
+                else if (key == "mame_dir") s.MameDir = value;
+                else if (key.StartsWith("token_protected."))
+                {
+                    string token = Unseal(value, Entropy);
+                    if (token.Length > 0) s.Tokens[key.Substring("token_protected.".Length)] = token;
+                }
             }
             return s;
+        }
+
+        // Cloud90 Hades Link 1.x kept its Hades folder and token here.
+        void ImportHadesLink()
+        {
+            if (Environment.GetEnvironmentVariable("CLOUD90_GAME_LINK_DIR") != null) return;
+            string old = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Cloud90HadesLink", "link.ini");
+            if (!File.Exists(old)) return;
+            foreach (string raw in File.ReadAllLines(old, Encoding.UTF8))
+            {
+                string line = raw.Trim();
+                if (line.StartsWith("hades_dir=")) HadesDir = line.Substring(10);
+                else if (line.StartsWith("server=")) Server = line.Substring(7);
+                else if (line.StartsWith("token_protected="))
+                {
+                    string token = Unseal(line.Substring(16), HadesLinkEntropy);
+                    if (token.Length > 0) Tokens["hades"] = token;
+                }
+            }
+            Save();
         }
 
         public void Save()
@@ -56,7 +95,9 @@ namespace Cloud90.HadesLink
             List<string> lines = new List<string>();
             if (Server != DefaultServer) lines.Add("server=" + Server);
             if (HadesDir.Length > 0) lines.Add("hades_dir=" + HadesDir);
-            if (Token.Length > 0) lines.Add("token_protected=" + Seal(Token));
+            if (MameDir.Length > 0) lines.Add("mame_dir=" + MameDir);
+            foreach (KeyValuePair<string, string> t in Tokens)
+                if (t.Value.Length > 0) lines.Add("token_protected." + t.Key + "=" + Seal(t.Value));
             File.WriteAllLines(FilePath, lines.ToArray(), new UTF8Encoding(false));
         }
 
@@ -66,11 +107,11 @@ namespace Cloud90.HadesLink
             return Convert.ToBase64String(sealedBytes);
         }
 
-        static string Unseal(string base64)
+        static string Unseal(string base64, byte[] entropy)
         {
             try
             {
-                byte[] plain = ProtectedData.Unprotect(Convert.FromBase64String(base64), Entropy, DataProtectionScope.CurrentUser);
+                byte[] plain = ProtectedData.Unprotect(Convert.FromBase64String(base64), entropy, DataProtectionScope.CurrentUser);
                 return Encoding.UTF8.GetString(plain);
             }
             catch (Exception)

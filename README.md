@@ -1,32 +1,20 @@
-# Cloud90 Hades Link
+# Cloud90 Game Link
 
-Lets a live stream on [Cloud90](https://cloud90.live) change a run of **Hades**
-(Supergiant Games): viewers' gifts heal Zagreus, drop boons, slow him down,
-spawn enemies of the zone he's in, and more.
+Lets a live stream on [Cloud90](https://cloud90.live) change PC games: viewers'
+gifts heal you, spawn enemies, invert your controls, fill your power gauge…
+One small Windows app for every PC game Cloud90 supports, a tab per game:
 
-It has two parts:
+| Game | How | Needs |
+|---|---|---|
+| **Hades** | `mod/Cloud90.lua`, a mod for the game's own Lua (one `Import` line at the end of `RoomManager.lua`, with a backup). It reads `Content/Scripts/Cloud90Inbox.lua` with `loadfile` and answers on the game's console. | Hades on Steam (Windows) |
+| **The King of Fighters 2002** | `mame/plugins/cloud90`, a MAME plugin. It reads `inbox.lua` and answers in `acks.txt` (in `%LOCALAPPDATA%\Cloud90GameLink\mame`). Only during a round of a game you started, vs the CPU. | [MAME](https://www.mamedev.org) and your own `kof2002.zip` + `neogeo.zip` |
 
-- **`mod/Cloud90.lua`** — a mod for the game's own Lua scripts. The game's Lua
-  can't use the network or files, so it reads `Content/Scripts/Cloud90Inbox.lua`
-  a few times a second with `loadfile` and answers on the game's console
-  (`CLOUD90 ack <id> ok`).
-- **`Cloud90HadesLink.exe`** — a small Windows app. It installs the mod (one
-  `Import` line at the end of `RoomManager.lua`, with a backup, and an
-  **Uninstall** button), opens Hades so it can read the mod's answers, and talks
-  to Cloud90 with the game's token, in the same protocol as the Nebula-based
-  Super Mario Galaxy link.
+The app talks to Cloud90 with each game's token (DPAPI-sealed), in the same
+protocol as the Nebula-based Super Mario Galaxy link, installs/uninstalls the
+game side, and opens the game itself so it can read the game's answers.
+`Pausar efectos` is the panic button. Log: `%LOCALAPPDATA%\Cloud90GameLink\link.log`.
 
-Nothing of the game is included or distributed: the mod is only the file in
-`mod/`, installed into the player's own copy.
-
-## Use
-
-1. In Cloud90 open **Juegos › Hades**, ask for access and generate your token.
-2. Open `Cloud90HadesLink.exe`, copy the token and press **Pegar token**.
-3. Press **Abrir Hades** (open the game from the Link, not from Steam, so the Link
-   can read what the game answers).
-
-`Pausar efectos` is the panic button. Logs: `%LOCALAPPDATA%\Cloud90HadesLink\link.log`.
+Nothing of any game is included or distributed: no game files, no ROMs, no BIOS.
 
 ## Build
 
@@ -35,17 +23,21 @@ powershell -ExecutionPolicy Bypass -File build.ps1 [-SigningKey key.xml]
 ```
 
 Uses the C# compiler that comes with Windows (.NET Framework 4.x). Output:
-`dist\Cloud90HadesLink.exe` (+ `.sig` with a signing key).
+`dist\Cloud90GameLink.exe` (+ `.sig` with a signing key).
 
-## Tests (no Hades needed)
+## Tests
 
 ```powershell
 npm install
-npm test                                                # the mod, against a fake engine
-powershell -ExecutionPolicy Bypass -File tests\link-test.ps1 -WsModule <path to the ws package>
+npm test                                                          # Hades mod vs a fake engine
+powershell -ExecutionPolicy Bypass -File tests\link-test.ps1 -WsModule <ws>      # inbox, installers, protocol
+powershell -ExecutionPolicy Bypass -File tests\mame\run-kof-e2e.ps1              # MAME plugin on real MAME
+powershell -ExecutionPolicy Bypass -File tests\mame\run-app-e2e.ps1 -WsModule <ws>  # app + real MAME
 ```
+
+The MAME tests play KOF 2002 headless by themselves and need your own ROMs in `C:\MAME\roms`.
 
 ## License
 
-MIT. Hades is a trademark of Supergiant Games; this project is not affiliated
-with or endorsed by them.
+MIT. Hades is a trademark of Supergiant Games; The King of Fighters is a
+trademark of SNK. This project is not affiliated with or endorsed by them.
