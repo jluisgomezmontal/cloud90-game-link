@@ -1,4 +1,4 @@
-// Cloud90 Game Link: the window. A tab per game (Hades, KOF 2002 in MAME),
+// Cloud90 Game Link: the window. A tab per game (Hades; KOF 2002 and Metal Slug 3 in MAME),
 // each with its own token, connection, folder, "open the game" and panic.
 using System;
 using System.Drawing;
@@ -86,7 +86,7 @@ namespace Cloud90.GameLink
         public override bool UseFolder(Settings s, string dir) { if (!MameFolder.IsMame(dir)) return false; s.MameDir = dir; return true; }
         public override void FindFolder(Settings s) { if (!MameFolder.IsMame(s.MameDir)) s.MameDir = MameFolder.Find(); }
         public override string Folder(Settings s) { return s.MameDir; }
-        public override Inbox Prepare(Settings s) { MamePlugin.Install(s.MameDir); return new Inbox(MameProcess.InboxPath); }
+        public override Inbox Prepare(Settings s) { MamePlugin.Install(s.MameDir); return new Inbox(MameProcess.InboxPath(set)); }
         public override void Start(Settings s, Link link, Action exited)
         {
             game.GameLine -= link.OnModLine;
@@ -284,8 +284,9 @@ namespace Cloud90.GameLink
             {
                 new GamePanel(this, new HadesHost()),
                 new GamePanel(this, new MameHost("kof2002", "neogeo", "KOF 2002")),
+                new GamePanel(this, new MameHost("mslug3", "neogeo", "Metal Slug 3")),
             };
-            string[] names = { "Hades", "KOF 2002 (MAME)" };
+            string[] names = { "Hades", "KOF 2002 (MAME)", "Metal Slug 3 (MAME)" };
             for (int i = 0; i < panels.Length; i++)
             {
                 TabPage page = new TabPage(names[i]);

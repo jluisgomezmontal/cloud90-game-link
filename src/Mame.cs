@@ -67,19 +67,18 @@ namespace Cloud90.GameLink
 
     internal sealed class MameProcess
     {
-        public static string WorkDir
+        // One folder per set, so each game's tab has its own inbox.
+        public static string WorkDir(string set)
         {
-            get
-            {
-                string dir = Path.Combine(Settings.DataDir, "mame");
-                Directory.CreateDirectory(dir);
-                return dir;
-            }
+            string dir = Path.Combine(Settings.DataDir, "mame", set);
+            Directory.CreateDirectory(dir);
+            return dir;
         }
 
-        public static string InboxPath { get { return Path.Combine(WorkDir, "inbox.lua"); } }
-        static string AcksPath { get { return Path.Combine(WorkDir, "acks.txt"); } }
+        public static string InboxPath(string set) { return Path.Combine(WorkDir(set), "inbox.lua"); }
+        static string AcksPath(string set) { return Path.Combine(WorkDir(set), "acks.txt"); }
 
+        string set = "";
         Process process;
         Timer tail;
         long readTo;
@@ -96,12 +95,13 @@ namespace Cloud90.GameLink
 
         public void Start(string mame, string set)
         {
-            File.WriteAllText(AcksPath, "");
+            this.set = set;
+            File.WriteAllText(AcksPath(set), "");
             readTo = 0;
             ProcessStartInfo info = new ProcessStartInfo(Path.Combine(mame, "mame.exe"), set + " -plugin cloud90 -skip_gameinfo " + ExtraArgs);
             info.WorkingDirectory = mame;
             info.UseShellExecute = false;
-            info.EnvironmentVariables["CLOUD90_DIR"] = WorkDir.Replace('\\', '/');
+            info.EnvironmentVariables["CLOUD90_DIR"] = WorkDir(set).Replace('\\', '/');
             process = new Process();
             process.StartInfo = info;
             process.EnableRaisingEvents = true;
@@ -125,7 +125,7 @@ namespace Cloud90.GameLink
             {
                 try
                 {
-                    using (FileStream f = new FileStream(AcksPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                    using (FileStream f = new FileStream(AcksPath(set), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
                     {
                         if (f.Length <= readTo) return;
                         f.Seek(readTo, SeekOrigin.Begin);

@@ -7,7 +7,8 @@ One small Windows app for every PC game Cloud90 supports, a tab per game:
 | Game | How | Needs |
 |---|---|---|
 | **Hades** | `mod/Cloud90.lua`, a mod for the game's own Lua (one `Import` line at the end of `RoomManager.lua`, with a backup). It reads `Content/Scripts/Cloud90Inbox.lua` with `loadfile` and answers on the game's console. | Hades on Steam (Windows) |
-| **The King of Fighters 2002** | `mame/plugins/cloud90`, a MAME plugin. It reads `inbox.lua` and answers in `acks.txt` (in `%LOCALAPPDATA%\Cloud90GameLink\mame`). Only during a round of a game you started, vs the CPU. | [MAME](https://www.mamedev.org) and your own `kof2002.zip` + `neogeo.zip` |
+| **The King of Fighters 2002** | `mame/plugins/cloud90`, a MAME plugin. It reads `inbox.lua` and answers in `acks.txt` (in `%LOCALAPPDATA%\Cloud90GameLink\mame\kof2002`). Only during a round of a game you started, vs the CPU. | [MAME](https://www.mamedev.org) and your own `kof2002.zip` + `neogeo.zip` |
+| **Metal Slug 3** | The same MAME plugin (`...\mame\mslug3`): lives, grenades, weapons, timer, invincibility, and enemies copied from the ones on screen (taken from the game's own free list of objects). Only while playing a game you started. | MAME and your own `mslug3.zip` + `neogeo.zip` |
 
 The app talks to Cloud90 with each game's token (DPAPI-sealed), in the same
 protocol as the Nebula-based Super Mario Galaxy link, installs/uninstalls the
@@ -31,13 +32,14 @@ Uses the C# compiler that comes with Windows (.NET Framework 4.x). Output:
 npm install
 npm test                                                          # Hades mod vs a fake engine
 powershell -ExecutionPolicy Bypass -File tests\link-test.ps1 -WsModule <ws>      # inbox, installers, protocol
-powershell -ExecutionPolicy Bypass -File tests\mame\run-kof-e2e.ps1              # MAME plugin on real MAME
+powershell -ExecutionPolicy Bypass -File tests\mame\run-kof-e2e.ps1              # MAME plugin on real MAME (KOF)
+powershell -ExecutionPolicy Bypass -File tests\mame\run-mslug3-e2e.ps1           # MAME plugin on real MAME (Metal Slug 3)
 powershell -ExecutionPolicy Bypass -File tests\mame\run-app-e2e.ps1 -WsModule <ws>  # app + real MAME
 ```
 
-The MAME tests play KOF 2002 headless by themselves and need your own ROMs in `C:\MAME\roms`.
+The MAME tests play KOF 2002 / Metal Slug 3 headless by themselves and need your own ROMs in `C:\MAME\roms`.
 
 ## License
 
-MIT. Hades is a trademark of Supergiant Games; The King of Fighters is a
-trademark of SNK. This project is not affiliated with or endorsed by them.
+MIT. Hades is a trademark of Supergiant Games; The King of Fighters and Metal Slug are
+trademarks of SNK. This project is not affiliated with or endorsed by them.

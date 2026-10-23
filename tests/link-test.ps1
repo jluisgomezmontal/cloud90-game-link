@@ -41,7 +41,7 @@ try {
     $server.WaitForExit(5000) | Out-Null
     $got = Get-Content $log
     $got | ForEach-Object { "  server: $_" }
-    if (-not ($got -match '"type":"hello","game":"kof2002","version":"cloud90-game-link-1.0.0"')) { "FAIL: no hello"; $failed++ }
+    if (-not ($got -match '"type":"hello","game":"kof2002","version":"cloud90-game-link-1.1.0"')) { "FAIL: no hello"; $failed++ }
     if (-not ($got -match '"type":"ack","id":"e-42","ok":false,"reason":"escudo activo"')) { "FAIL: no ack"; $failed++ }
     if (-not $server.HasExited) { $server.Kill() }
 }

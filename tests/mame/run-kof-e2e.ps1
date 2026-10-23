@@ -20,7 +20,7 @@ $p.WaitForExit(300000) | Out-Null
 $acks = Get-Content (Join-Path $work 'acks.txt') -ErrorAction SilentlyContinue
 $log = Get-Content (Join-Path $work 'e2e.log') -ErrorAction SilentlyContinue
 $expect = [ordered]@{
-    'hello'                       = ($acks -match '^hello 1\.0\.0 kof2002').Count -gt 0
+    'hello'                       = ($acks -match '^hello 1\.1\.0 kof2002').Count -gt 0
     'state 1 in the round'        = ($acks -match '^state 1').Count -gt 0
     'damage ok'                   = ($acks -match '^ack e1 ok').Count -eq 1
     'power_full ok, 3 stocks'     = ($acks -match '^ack e2 ok').Count -eq 1 -and ($log -match 'stocks=3').Count -eq 1

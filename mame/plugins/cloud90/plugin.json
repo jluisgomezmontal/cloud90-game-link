@@ -2,7 +2,7 @@
   "plugin": {
     "name": "cloud90",
     "description": "Cloud90 Game Link: live-stream events change the game (KOF 2002)",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "author": "Cloud90",
     "type": "plugin",
     "start": "false"

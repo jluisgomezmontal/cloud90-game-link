@@ -115,7 +115,7 @@ namespace Cloud90.GameLink
                 return File.ReadAllText(Path.Combine(dir, name == "cloud90-mame-init.lua" ? "init.lua" : "plugin.json"));
             };
             MamePlugin.Install(mame);
-            link.UseInbox(new Inbox(MameProcess.InboxPath));
+            link.UseInbox(new Inbox(MameProcess.InboxPath("kof2002")));
             MameProcess.ExtraArgs = "-video none -sound none -nothrottle -autoboot_script \"" + driver + "\" -seconds_to_run 90";
             MameProcess game = new MameProcess();
             StringBuilder lines = new StringBuilder();
@@ -134,7 +134,7 @@ namespace Cloud90.GameLink
             string got;
             lock (lines) got = lines.ToString();
             Console.WriteLine(got);
-            Check(got.Contains("hello 1.0.0 kof2002"), "the plugin said hello");
+            Check(got.Contains("hello 1.1.0 kof2002"), "the plugin said hello");
             Check(got.Contains("state 1"), "a round came");
             Check(got.Contains("ack e-42 ok"), "the server's effect was applied");
             foreach (System.Diagnostics.Process p in System.Diagnostics.Process.GetProcessesByName("mame")) { try { p.Kill(); } catch (Exception) { } }
