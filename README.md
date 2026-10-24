@@ -29,8 +29,9 @@ Uses the C# compiler that comes with Windows (.NET Framework 4.x). Output:
 ## Tests
 
 ```powershell
-npm install
+npm ci
 npm test                                                          # Hades mod vs a fake engine
+npm run test:protocol                                             # local WebSocket security/protocol tests
 powershell -ExecutionPolicy Bypass -File tests\link-test.ps1 -WsModule <ws>      # inbox, installers, protocol
 powershell -ExecutionPolicy Bypass -File tests\mame\run-kof-e2e.ps1              # MAME plugin on real MAME (KOF)
 powershell -ExecutionPolicy Bypass -File tests\mame\run-mslug3-e2e.ps1           # MAME plugin on real MAME (Metal Slug 3)
@@ -38,6 +39,13 @@ powershell -ExecutionPolicy Bypass -File tests\mame\run-app-e2e.ps1 -WsModule <w
 ```
 
 The MAME tests play KOF 2002 / Metal Slug 3 headless by themselves and need your own ROMs in `C:\MAME\roms`.
+
+The local protocol tests do not launch games or contact production servers.
+They cover HTTPS/WSS endpoints, rejection of remote plaintext connections,
+UTF-8 characters split across WebSocket fragments, and the 64 KiB message
+limit. Each connection owns its ping timer and sends have a 10-second timeout.
+Plain HTTP/WS is supported only for loopback test servers. Stop the app before
+replacing the executable; its connections are cancelled when the window closes.
 
 ## License
 

@@ -1,0 +1,24 @@
+name: Checks
+on:
+  pull_request:
+  push:
+    branches: [main, improve/security-and-reliability]
+permissions:
+  contents: read
+jobs:
+  game-link:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm audit --audit-level high
+      - run: npm test
+      - run: npm run test:protocol
+      - name: Build Windows app
+        shell: powershell
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1

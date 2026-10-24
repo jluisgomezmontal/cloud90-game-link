@@ -154,6 +154,8 @@ namespace Cloud90.GameLink
             link.Start();
         }
 
+        public void Stop() { link.Stop(); }
+
         void Prepare()
         {
             string problem = host.Problem(form.Settings);
@@ -314,6 +316,7 @@ namespace Cloud90.GameLink
                 Log.Write("Cloud90 Game Link " + Link.Version);
                 foreach (GamePanel p in panels) p.Startup();
             };
+            FormClosed += delegate { foreach (GamePanel p in panels) p.Stop(); };
         }
 
         public static void Style(Button b, string text, int x, int y)

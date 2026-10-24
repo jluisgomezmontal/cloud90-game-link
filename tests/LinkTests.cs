@@ -21,6 +21,37 @@ namespace Cloud90.GameLink
 
         public static string HostileNameBase64 { get { return Convert.ToBase64String(Encoding.UTF8.GetBytes(HostileName)); } }
 
+        public static int NetworkSecurity()
+        {
+            Check(Link.SocketUri("https://cloud90.dev").ToString() == "wss://cloud90.dev/api/game-link/ws", "HTTPS becomes WSS");
+            Check(Link.SocketUri("http://127.0.0.1:39090").Port == 39090, "local HTTP test endpoint is allowed");
+            foreach (string value in new string[] { "http://example.com", "ws://example.com", "https://user:password@example.com", "https://example.com?token=secret", "file:///C:/test" })
+            {
+                bool rejected = false;
+                try { Link.SocketUri(value); } catch (ArgumentException) { rejected = true; }
+                Check(rejected, "unsafe endpoint rejected: " + value);
+            }
+            return failures;
+        }
+
+        public static int OversizedProtocol(string server)
+        {
+            Settings s = new Settings();
+            s.Server = server;
+            s.Tokens["kof2002"] = "c90gl_test";
+            Link link = new Link(delegate { return s; }, "kof2002", "KOF 2002");
+            bool rejected = false;
+            link.Status += delegate (string status) { if (status.Contains("demasiado grande")) Volatile.Write(ref rejected, true); };
+            link.Start();
+            try {
+                DateTime deadline = DateTime.UtcNow + TimeSpan.FromSeconds(8);
+                while (!Volatile.Read(ref rejected) && DateTime.UtcNow < deadline) Thread.Sleep(50);
+                Check(Volatile.Read(ref rejected), "oversized fragmented messages are rejected");
+            }
+            finally { link.Stop(); }
+            return failures;
+        }
+
         // Inbox text for a viewer name that tries to break out of the string.
         public static string WriteHostileInbox(string path)
         {
@@ -180,9 +211,11 @@ namespace Cloud90.GameLink
                 Thread.Sleep(200);
             }
             Check(text.Contains("effect = \"slow\"") && text.Contains("ms = 15000") && text.Contains("safe = true") && text.Contains("arg = \"HeavyMelee\""), "the effect reached the inbox");
+            Check(text.Contains("by = " + Inbox.LuaString("Ana \u00f1\U0001F600")), "UTF-8 survives a split inside a multibyte character");
             link.OnModLine("ack e-42 escudo activo");
             Thread.Sleep(1500);
             Check(!File.ReadAllText(inboxPath, Encoding.UTF8).Contains("e-42"), "acked effects leave the inbox");
+            link.Stop();
             return failures;
         }
     }
