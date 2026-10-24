@@ -9,6 +9,7 @@ $work = Join-Path ([IO.Path]::GetTempPath()) ('c90hl-test-' + [Guid]::NewGuid().
 New-Item -ItemType Directory -Force $work | Out-Null
 $env:CLOUD90_GAME_LINK_DIR = Join-Path $work 'data'
 $failed = 0
+$server = $null
 try {
     $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
     $dll = Join-Path $work 'LinkTests.dll'
@@ -30,22 +31,45 @@ try {
 
     # 2b. MAME.
      $failed += $t::Mame((Join-Path $work 'Mame'))
+    $failed += $t::NetworkSecurity()
 
     # 3. Protocol.
     if ($WsModule) { $env:WS_MODULE = $WsModule }
-    $env:PORT = '39090'
-    $log = Join-Path $work 'server.log'
-    $server = Start-Process node -ArgumentList "`"$(Join-Path $PSScriptRoot 'fake-server.js')`"" -RedirectStandardOutput $log -PassThru -NoNewWindow
-    Start-Sleep -Milliseconds 800
-    $failed += $t::Protocol('http://127.0.0.1:39090', (Join-Path $work 'inbox2.lua'))
-    $server.WaitForExit(5000) | Out-Null
-    $got = Get-Content $log
-    $got | ForEach-Object { "  server: $_" }
-    if (-not ($got -match '"type":"hello","game":"kof2002","version":"cloud90-game-link-1.1.0"')) { "FAIL: no hello"; $failed++ }
-    if (-not ($got -match '"type":"ack","id":"e-42","ok":false,"reason":"escudo activo"')) { "FAIL: no ack"; $failed++ }
-    if (-not $server.HasExited) { $server.Kill() }
+    foreach ($mode in @('normal', 'oversize')) {
+        $listener = New-Object Net.Sockets.TcpListener([Net.IPAddress]::Loopback, 0)
+        $listener.Start()
+        $port = $listener.LocalEndpoint.Port
+        $listener.Stop()
+        $env:PORT = [string]$port
+        $env:FAKE_MODE = $mode
+        $log = Join-Path $work "$mode-server.log"
+        $server = Start-Process node -ArgumentList "`"$(Join-Path $PSScriptRoot 'fake-server.js')`"" -RedirectStandardOutput $log -PassThru -WindowStyle Hidden
+        try {
+            $deadline = (Get-Date).AddSeconds(5)
+            while (-not ((Test-Path -LiteralPath $log) -and (Select-String -LiteralPath $log -Pattern 'LISTENING' -Quiet))) {
+                if ($server.HasExited -or (Get-Date) -gt $deadline) { throw 'Fake WebSocket server did not start' }
+                Start-Sleep -Milliseconds 50
+            }
+            if ($mode -eq 'normal') { $failed += $t::Protocol("http://127.0.0.1:$port", (Join-Path $work 'inbox2.lua')) }
+            else { $failed += $t::OversizedProtocol("http://127.0.0.1:$port") }
+            $server.WaitForExit(5000) | Out-Null
+            $got = Get-Content -LiteralPath $log -Encoding UTF8
+            $got | ForEach-Object { "  server: $_" }
+            if (-not ($got -match '"type":"hello","game":"kof2002","version":"cloud90-game-link-1.1.0"')) { "FAIL: no hello"; $failed++ }
+            if ($mode -eq 'normal' -and -not ($got -match '"type":"ack","id":"e-42","ok":false,"reason":"escudo activo"')) { "FAIL: no ack"; $failed++ }
+        }
+        finally {
+            if ($server -and -not $server.HasExited) { Stop-Process -Id $server.Id -Force }
+            $server = $null
+        }
+    }
 }
 finally {
-    Remove-Item -Recurse -Force $work -ErrorAction SilentlyContinue
+    if ($server -and -not $server.HasExited) { Stop-Process -Id $server.Id -Force }
+    $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\') + '\'
+    $cleanupPath = [IO.Path]::GetFullPath($work)
+    if (-not $cleanupPath.StartsWith($tempRoot, [StringComparison]::OrdinalIgnoreCase) -or
+        -not [IO.Path]::GetFileName($cleanupPath).StartsWith('c90hl-test-')) { throw 'Unsafe test cleanup path' }
+    Remove-Item -LiteralPath $cleanupPath -Recurse -Force -ErrorAction SilentlyContinue
 }
 if ($failed -eq 0) { 'cloud90 hades link tests passed' } else { "$failed failed"; exit 1 }

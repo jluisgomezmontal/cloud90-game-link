@@ -1,11 +1,13 @@
 {
-  "name": "cloud90-hades-link",
+  "name": "cloud90-game-link",
   "private": true,
-  "description": "Tests for the Cloud90 Hades mod (Lua run with fengari against a fake engine).",
+  "description": "Cloud90 Game Link tests for game mods, installers, inboxes and WebSocket protocol.",
   "scripts": {
-    "test": "node tests/run.js"
+    "test": "node tests/run.js",
+    "test:protocol": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests/link-test.ps1"
   },
   "devDependencies": {
-    "fengari": "0.1.4"
+    "fengari": "0.1.5",
+    "ws": "8.22.0"
   }
 }

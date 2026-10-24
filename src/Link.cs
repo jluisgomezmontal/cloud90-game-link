@@ -3,6 +3,7 @@
 // the game's token, "hello", then effects in and acks/state out.
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -23,13 +24,15 @@ namespace Cloud90.GameLink
         static readonly TimeSpan AckTimeout = TimeSpan.FromSeconds(10);
         static readonly Regex EffectName = new Regex("^[a-z0-9_]{1,40}$");
         static readonly Regex ArgValue = new Regex("^[A-Za-z0-9_]{0,40}$");
+        internal const int MaxMessageBytes = 64 * 1024;
+        static readonly Encoding WireEncoding = new UTF8Encoding(false, true);
 
         readonly Func<Settings> settings;
-        readonly JavaScriptSerializer json = new JavaScriptSerializer();
+        readonly JavaScriptSerializer json = new JavaScriptSerializer { MaxJsonLength = MaxMessageBytes, RecursionLimit = 32 };
         readonly object gate = new object();
         ClientWebSocket socket;
         CancellationTokenSource stop;
-        int generation;
+        volatile int generation;
 
         Inbox inbox;
         bool paused;
@@ -57,9 +60,37 @@ namespace Cloud90.GameLink
                 if (stop != null) stop.Cancel();
                 stop = new CancellationTokenSource();
                 int mine = ++generation;
-                CancellationToken token = stop.Token;
-                Task.Run(() => Run(mine, token));
+                CancellationTokenSource lifetime = stop;
+                Task.Run(async delegate {
+                    try { await Run(mine, lifetime.Token); }
+                    finally {
+                        lock (gate) { if (ReferenceEquals(stop, lifetime)) stop = null; }
+                        lifetime.Dispose();
+                    }
+                });
             }
+        }
+
+        public void Stop()
+        {
+            lock (gate) { if (stop != null) stop.Cancel(); }
+        }
+
+        internal static Uri SocketUri(string server)
+        {
+            Uri origin;
+            if (!Uri.TryCreate(server, UriKind.Absolute, out origin) ||
+                (origin.Scheme != "https" && origin.Scheme != "http" && origin.Scheme != "wss" && origin.Scheme != "ws") ||
+                origin.UserInfo.Length != 0 || origin.Query.Length != 0 || origin.Fragment.Length != 0)
+                throw new ArgumentException("Direccion de servidor invalida");
+            bool secure = origin.Scheme == "https" || origin.Scheme == "wss";
+            if (!secure && !origin.IsLoopback)
+                throw new ArgumentException("El servidor remoto requiere HTTPS para proteger el token");
+            UriBuilder builder = new UriBuilder(origin);
+            builder.Scheme = secure ? "wss" : "ws";
+            builder.Port = origin.IsDefaultPort ? -1 : origin.Port;
+            builder.Path = origin.AbsolutePath.TrimEnd('/') + "/api/game-link/ws";
+            return builder.Uri;
         }
 
         void SetStatus(string text)
@@ -85,18 +116,23 @@ namespace Cloud90.GameLink
                 int closeCode = 0;
                 DateTime connectedAt = DateTime.MinValue;
                 ClientWebSocket ws = new ClientWebSocket();
+                CancellationTokenSource connection = CancellationTokenSource.CreateLinkedTokenSource(cancel);
+                Task pinger = null;
                 try
                 {
                     ws.Options.SetRequestHeader("Authorization", "Bearer " + token);
-                    Uri uri = new Uri(s.Server.TrimEnd('/').Replace("https://", "wss://").Replace("http://", "ws://") + "/api/game-link/ws");
+                    Uri uri = SocketUri(s.Server);
                     SetStatus("conectando…");
                     welcomed = false;
                     await ws.ConnectAsync(uri, cancel);
-                    socket = ws;
+                    lock (gate) {
+                        if (mine != generation || cancel.IsCancellationRequested) return;
+                        socket = ws;
+                    }
                     connectedAt = DateTime.UtcNow;
                     await Send(new Dictionary<string, object> { { "type", "hello" }, { "game", Game }, { "version", Version } });
-                    Task pinger = Ping(ws, cancel);
-                    await Receive(ws, cancel);
+                    pinger = Ping(ws, connection.Token);
+                    await Receive(ws, connection.Token);
                     if (ws.CloseStatus.HasValue && ws.CloseStatus.Value != WebSocketCloseStatus.Empty)
                     {
                         closeCode = (int)ws.CloseStatus.Value;
@@ -115,8 +151,14 @@ namespace Cloud90.GameLink
                 catch (Exception e) { error = e.InnerException != null ? e.InnerException.Message : e.Message; }
                 finally
                 {
-                    socket = null;
+                    connection.Cancel();
+                    // The Windows Framework compiler is C# 5 (no await in
+                    // finally). Cancellation ends this connection's ping loop;
+                    // observe its completion without sending through a new socket.
+                    if (pinger != null) Fire(pinger);
+                    lock (gate) { if (ReferenceEquals(socket, ws)) socket = null; }
                     ws.Dispose();
+                    connection.Dispose();
                 }
                 // A connection that held for a while starts the waits over;
                 // being refused (token, access, version) waits a minute.
@@ -143,7 +185,7 @@ namespace Cloud90.GameLink
                 while (ws.State == WebSocketState.Open && !cancel.IsCancellationRequested)
                 {
                     await Task.Delay(PingEvery, cancel);
-                    await Send(new Dictionary<string, object> { { "type", "ping" } });
+                    await SendTo(ws, new Dictionary<string, object> { { "type", "ping" } }, cancel);
                     // Effects the game didn't answer: refused, as Nebula would.
                     if (inbox != null)
                         foreach (Inbox.Item old in inbox.Expire(AckTimeout))
@@ -158,15 +200,20 @@ namespace Cloud90.GameLink
             byte[] buffer = new byte[16384];
             while (ws.State == WebSocketState.Open)
             {
-                StringBuilder message = new StringBuilder();
-                WebSocketReceiveResult r;
-                do
+                using (MemoryStream message = new MemoryStream())
                 {
-                    r = await ws.ReceiveAsync(new ArraySegment<byte>(buffer), cancel);
-                    if (r.MessageType == WebSocketMessageType.Close) return;
-                    message.Append(Encoding.UTF8.GetString(buffer, 0, r.Count));
-                } while (!r.EndOfMessage);
-                await Handle(message.ToString());
+                    WebSocketReceiveResult r;
+                    do
+                    {
+                        r = await ws.ReceiveAsync(new ArraySegment<byte>(buffer), cancel);
+                        if (r.MessageType == WebSocketMessageType.Close) return;
+                        if (r.MessageType != WebSocketMessageType.Text || message.Length + r.Count > MaxMessageBytes)
+                            throw new InvalidDataException("Mensaje de servidor invalido o demasiado grande");
+                        message.Write(buffer, 0, r.Count);
+                    } while (!r.EndOfMessage);
+                    cancel.ThrowIfCancellationRequested();
+                    await Handle(WireEncoding.GetString(message.ToArray()));
+                }
             }
         }
 
@@ -175,6 +222,7 @@ namespace Cloud90.GameLink
             Dictionary<string, object> msg;
             try { msg = json.Deserialize<Dictionary<string, object>>(text); }
             catch (Exception) { return; }
+            if (msg == null) return;
             string type = Str(msg, "type");
             if (type == "welcome")
             {
@@ -279,15 +327,30 @@ namespace Cloud90.GameLink
 
         readonly SemaphoreSlim sendLock = new SemaphoreSlim(1, 1);
 
-        async Task Send(Dictionary<string, object> message)
+        Task Send(Dictionary<string, object> message)
         {
-            ClientWebSocket ws = socket;
+            ClientWebSocket ws;
+            lock (gate) { ws = socket; }
+            return SendTo(ws, message, CancellationToken.None);
+        }
+
+        async Task SendTo(ClientWebSocket ws, Dictionary<string, object> message, CancellationToken cancel)
+        {
             if (ws == null || ws.State != WebSocketState.Open) return;
             byte[] bytes = Encoding.UTF8.GetBytes(json.Serialize(message));
-            await sendLock.WaitAsync();
-            try { await ws.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None); }
-            catch (Exception) { }
-            finally { sendLock.Release(); }
+            using (CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(cancel))
+            {
+                timeout.CancelAfter(TimeSpan.FromSeconds(10));
+                bool acquired = false;
+                try {
+                    await sendLock.WaitAsync(timeout.Token);
+                    acquired = true;
+                    if (ws.State == WebSocketState.Open)
+                        await ws.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, timeout.Token);
+                }
+                catch (Exception) { }
+                finally { if (acquired) sendLock.Release(); }
+            }
         }
     }
 }
