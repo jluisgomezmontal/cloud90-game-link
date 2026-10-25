@@ -287,6 +287,7 @@ namespace Cloud90.GameLink
                 new GamePanel(this, new HadesHost()),
                 new GamePanel(this, new MameHost("kof2002", "neogeo", "KOF 2002")),
                 new GamePanel(this, new MameHost("mslug3", "neogeo", "Metal Slug 3")),
+                new GamePanel(this, new CtrHost()),
             };
             string[] names = { "Hades", "KOF 2002 (MAME)", "Metal Slug 3 (MAME)" };
             for (int i = 0; i < panels.Length; i++)

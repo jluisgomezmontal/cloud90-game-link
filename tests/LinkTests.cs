@@ -34,6 +34,31 @@ namespace Cloud90.GameLink
             return failures;
         }
 
+        public static int CtrInbox(string folder)
+        {
+            int before = failures;
+            Directory.CreateDirectory(folder);
+            string path = Path.Combine(folder, "inbox.json");
+            using (Inbox inbox = new Inbox(path, "session-123")) {
+                var json = new System.Web.Script.Serialization.JavaScriptSerializer();
+                var root = json.Deserialize<Dictionary<string, object>>(File.ReadAllText(path));
+                Check((bool)root["paused"], "CTR starts paused until Cloud90 welcomes the connection");
+                inbox.Connected(true);
+                Check(inbox.Add(new Inbox.Item { Id = "test-1", Effect = "give_item", Arg = "missile", Ms = 1, Sent = DateTime.UtcNow }), "CTR queues a valid effect");
+                Check(!inbox.Add(new Inbox.Item { Id = "test-1", Effect = "give_item" }), "CTR refuses duplicate pending IDs");
+                Check(!inbox.Add(new Inbox.Item { Id = "bad\nack fake ok", Effect = "give_item" }), "CTR refuses line injection in IDs");
+                root = json.Deserialize<Dictionary<string, object>>(File.ReadAllText(path));
+                Check(!(bool)root["paused"] && (string)root["session"] == "session-123", "CTR envelope carries session and connection state");
+                Check(File.ReadAllText(path).Contains("missile"), "CTR delivers the selected weapon");
+                inbox.Connected(false);
+                Check(inbox.Take("test-1") == null, "CTR clears pending commands on disconnect");
+                root = json.Deserialize<Dictionary<string, object>>(File.ReadAllText(path));
+                Check((bool)root["paused"], "CTR disconnect pauses the runtime");
+            }
+            Check(!CtrHost.IsPortable(folder), "CTR rejects a folder containing only an inbox");
+            return failures - before;
+        }
+
         public static int OversizedProtocol(string server)
         {
             Settings s = new Settings();
@@ -191,6 +216,35 @@ namespace Cloud90.GameLink
 
         // Against tests/fake-server.js: connects, says hello, gets an effect
         // into the inbox, and answers it as the mod would.
+        public static int CtrProtocol(string server, string inboxPath)
+        {
+            int before = failures;
+            Settings s = new Settings();
+            s.Server = server;
+            s.Tokens["ctrnf"] = "c90gl_test";
+            Link link = new Link(delegate { return s; }, "ctrnf", "CTR Nitro-Fueled");
+            using (Inbox inbox = new Inbox(inboxPath, "protocol-session")) {
+                link.UseInbox(inbox);
+                link.Start();
+                Thread.Sleep(1500);
+                link.OnModLine("state 1");
+                DateTime limit = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+                string text = "";
+                while (DateTime.UtcNow < limit) {
+                    text = File.ReadAllText(inboxPath, Encoding.UTF8);
+                    if (text.Contains("e-42")) break;
+                    Thread.Sleep(50);
+                }
+                Check(text.Contains("give_item") && text.Contains("missile"), "CTR WebSocket command reaches JSON inbox");
+                Check(text.Contains("protocol-session") && text.Contains("expiresMs"), "CTR command has its session and expiry");
+                link.OnModLine("ack e-42 ok");
+                Thread.Sleep(500);
+                Check(!File.ReadAllText(inboxPath).Contains("e-42"), "CTR native acknowledgement clears the command");
+                link.Stop();
+            }
+            return failures - before;
+        }
+
         public static int Protocol(string server, string inboxPath)
         {
             Settings s = new Settings();

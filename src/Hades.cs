@@ -8,6 +8,8 @@ using System.IO;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Web.Script.Serialization;
+using System.Runtime.InteropServices;
 using Microsoft.Win32;
 
 namespace Cloud90.GameLink
@@ -115,7 +117,7 @@ namespace Cloud90.GameLink
     // What the mod reads: the control flags and the effects not answered yet,
     // as a Lua table. Written whole, through a temporary file, so the game
     // never reads half of it. Viewer names are escaped byte by byte.
-    internal sealed class Inbox
+    internal sealed class Inbox : IDisposable
     {
         public sealed class Item
         {
@@ -133,10 +135,39 @@ namespace Cloud90.GameLink
         readonly object gate = new object();
         readonly List<Item> items = new List<Item>();
         bool paused;
+        readonly string session;
+        readonly System.Threading.Timer heartbeat;
+        bool connected;
+        bool disposed;
+        [DllImport("kernel32.dll")] static extern ulong GetTickCount64();
 
         public Inbox(string path) { this.path = path; Write(); }
+        public Inbox(string path, string session)
+        {
+            this.path = path;
+            this.session = session;
+            Write();
+            heartbeat = new System.Threading.Timer(delegate { lock (gate) { if (!disposed) Write(); } }, null, 500, 500);
+        }
+        public void Connected(bool value)
+        {
+            if (session == null) return;
+            lock (gate) { connected = value; if (!value) items.Clear(); Write(); }
+        }
+        public void Dispose()
+        {
+            lock (gate) { if (disposed) return; disposed = true; connected = false; items.Clear(); Write(); }
+            if (heartbeat != null) heartbeat.Dispose();
+        }
 
-        public void Add(Item item) { lock (gate) { items.Add(item); Write(); } }
+        public bool Add(Item item)
+        {
+            lock (gate) {
+                if (disposed) return false;
+                if (session != null && (items.Count >= 20 || !Regex.IsMatch(item.Id ?? "", "^[A-Za-z0-9_-]{1,80}$") || items.Exists(delegate(Item i) { return i.Id == item.Id; }))) return false;
+                items.Add(item); Write(); return true;
+            }
+        }
 
         public Item Take(string id)
         {
@@ -177,6 +208,7 @@ namespace Cloud90.GameLink
 
         void Write()
         {
+            if (session != null) { WriteJson(); return; }
             StringBuilder b = new StringBuilder("return {\n  control = { paused = ");
             b.Append(paused ? "true" : "false").Append(" },\n  effects = {\n");
             foreach (Item i in items)
@@ -200,6 +232,24 @@ namespace Cloud90.GameLink
             {
                 Log.Write("no se pudo escribir el buzón: " + e.Message);
             }
+        }
+
+        void WriteJson()
+        {
+            List<object> effects = new List<object>();
+            ulong now = GetTickCount64();
+            foreach (Item i in items)
+            {
+                double remaining = 10000 - (DateTime.UtcNow - i.Sent).TotalMilliseconds;
+                if (remaining <= 0) continue;
+                effects.Add(new { id = i.Id, effect = i.Effect, ms = i.Ms, arg = i.Arg, expiresMs = now + (ulong)remaining });
+            }
+            string text = new JavaScriptSerializer().Serialize(new { session = session, heartbeatMs = now, paused = paused || !connected, effects = effects });
+            try {
+                string temp = path + ".tmp";
+                File.WriteAllText(temp, text, new UTF8Encoding(false));
+                if (File.Exists(path)) File.Replace(temp, path, null); else File.Move(temp, path);
+            } catch (IOException e) { Log.Write("CTR: no se pudo escribir el buzón: " + e.Message); }
         }
     }
 

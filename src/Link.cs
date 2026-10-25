@@ -15,7 +15,7 @@ namespace Cloud90.GameLink
 {
     internal sealed class Link
     {
-        public const string Version = "cloud90-game-link-1.1.0";
+        public const string Version = "cloud90-game-link-1.2.0";
         // "hades", "kof2002": the token and the hello are this game's.
         public readonly string Game;
         readonly string title;
@@ -51,7 +51,11 @@ namespace Cloud90.GameLink
         public bool Paused { get { return paused; } }
 
         // The game's inbox once the game is found; effects wait for it.
-        public void UseInbox(Inbox value) { inbox = value; inbox.SetPaused(paused); }
+        public void UseInbox(Inbox value)
+        {
+            if (inbox != null && !ReferenceEquals(inbox, value)) inbox.Dispose();
+            inbox = value; inbox.SetPaused(paused); inbox.Connected(welcomed);
+        }
 
         public void Start()
         {
@@ -73,6 +77,7 @@ namespace Cloud90.GameLink
 
         public void Stop()
         {
+            if (inbox != null) inbox.Connected(false);
             lock (gate) { if (stop != null) stop.Cancel(); }
         }
 
@@ -151,6 +156,10 @@ namespace Cloud90.GameLink
                 catch (Exception e) { error = e.InnerException != null ? e.InnerException.Message : e.Message; }
                 finally
                 {
+                    if (mine == generation) {
+                        welcomed = false;
+                        if (inbox != null) inbox.Connected(false);
+                    }
                     connection.Cancel();
                     // The Windows Framework compiler is C# 5 (no await in
                     // finally). Cancellation ends this connection's ping loop;
@@ -227,6 +236,7 @@ namespace Cloud90.GameLink
             if (type == "welcome")
             {
                 welcomed = true;
+                if (inbox != null) inbox.Connected(true);
                 SetStatus("conectado a Cloud90");
                 await SendState();
             }
@@ -260,7 +270,7 @@ namespace Cloud90.GameLink
                 string arg = Str(msg, "arg");
                 item.Arg = ArgValue.IsMatch(arg) ? arg : "";
                 item.Sent = DateTime.UtcNow;
-                inbox.Add(item);
+                if (!inbox.Add(item)) await Ack(id, false, "fila llena o identificador invalido");
             }
         }
 
@@ -280,10 +290,14 @@ namespace Cloud90.GameLink
                 if (space <= 0) return;
                 string id = rest.Substring(0, space);
                 string result = rest.Substring(space + 1).Trim();
-                if (inbox != null) inbox.Take(id);
+                if (inbox != null && inbox.Take(id) == null && Game == "ctrnf") return;
                 bool ok = result == "ok";
                 Log.Write(title + ": efecto " + id + ": " + result);
                 Fire(Ack(id, ok, ok ? null : result));
+            }
+            else if (line == "pause 1" || line == "pause 0")
+            {
+                SetPaused(line.EndsWith("1"));
             }
             else if (line.StartsWith("state "))
             {
@@ -299,6 +313,7 @@ namespace Cloud90.GameLink
         public void OnGameExited()
         {
             inPlay = false;
+            if (inbox != null) inbox.Connected(false);
             Fire(SendState());
         }
 
