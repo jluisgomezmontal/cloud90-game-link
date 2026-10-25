@@ -32,10 +32,11 @@ try {
     # 2b. MAME.
      $failed += $t::Mame((Join-Path $work 'Mame'))
     $failed += $t::NetworkSecurity()
+    $failed += $t::CtrInbox((Join-Path $work 'ctrnf'))
 
     # 3. Protocol.
     if ($WsModule) { $env:WS_MODULE = $WsModule }
-    foreach ($mode in @('normal', 'oversize')) {
+    foreach ($mode in @('normal', 'oversize', 'ctr')) {
         $listener = New-Object Net.Sockets.TcpListener([Net.IPAddress]::Loopback, 0)
         $listener.Start()
         $port = $listener.LocalEndpoint.Port
@@ -51,11 +52,14 @@ try {
                 Start-Sleep -Milliseconds 50
             }
             if ($mode -eq 'normal') { $failed += $t::Protocol("http://127.0.0.1:$port", (Join-Path $work 'inbox2.lua')) }
+            elseif ($mode -eq 'ctr') { $failed += $t::CtrProtocol("http://127.0.0.1:$port", (Join-Path $work 'ctr-protocol.json')) }
             else { $failed += $t::OversizedProtocol("http://127.0.0.1:$port") }
             $server.WaitForExit(5000) | Out-Null
             $got = Get-Content -LiteralPath $log -Encoding UTF8
             $got | ForEach-Object { "  server: $_" }
-            if (-not ($got -match '"type":"hello","game":"kof2002","version":"cloud90-game-link-1.1.0"')) { "FAIL: no hello"; $failed++ }
+            $helloGame = if ($mode -eq 'ctr') { 'ctrnf' } else { 'kof2002' }
+            if (-not ($got -match ('"type":"hello","game":"' + $helloGame + '","version":"cloud90-game-link-1.2.0"'))) { "FAIL: no hello"; $failed++ }
+            if ($mode -eq 'ctr' -and -not ($got -match '"type":"ack","id":"e-42","ok":true')) { "FAIL: no CTR ack"; $failed++ }
             if ($mode -eq 'normal' -and -not ($got -match '"type":"ack","id":"e-42","ok":false,"reason":"escudo activo"')) { "FAIL: no ack"; $failed++ }
         }
         finally {

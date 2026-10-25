@@ -25,7 +25,8 @@ server.on('upgrade', (req, socket, head) => {
       }
       if (msg.type === 'state' && msg.inPlay && !sent) {
         sent = true;
-        const payload = Buffer.from(JSON.stringify({ type: 'effect', id: 'e-42', effect: process.env.FAKE_EFFECT || 'slow', ms: 15000, by: 'Ana \u00f1\u{1F600}', safe: true, arg: 'HeavyMelee' }));
+        const ctr = process.env.FAKE_MODE === 'ctr';
+        const payload = Buffer.from(JSON.stringify({ type: 'effect', id: 'e-42', effect: ctr ? 'give_item' : process.env.FAKE_EFFECT || 'slow', ms: ctr ? 1 : 15000, by: 'Ana \u00f1\u{1F600}', safe: true, arg: ctr ? 'missile' : 'HeavyMelee' }));
         const split = payload.indexOf(0xc3) + 1;
         ws.send(payload.subarray(0, split), { binary: false, fin: false });
         ws.send(payload.subarray(split), { binary: false, fin: true });
