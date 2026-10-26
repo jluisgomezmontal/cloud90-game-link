@@ -17,6 +17,28 @@ namespace Cloud90.GameLink
             if (!ok) { failures++; Console.WriteLine("FAIL: " + what); }
         }
 
+        public static int StartupWindow()
+        {
+            int before = failures;
+            Thread thread = new Thread(delegate () {
+                try {
+                    using (MainForm form = new MainForm()) {
+                        System.Windows.Forms.TabControl tabs = null;
+                        foreach (System.Windows.Forms.Control control in form.Controls)
+                            if (control is System.Windows.Forms.TabControl) tabs = (System.Windows.Forms.TabControl)control;
+                        Check(tabs != null && tabs.TabCount == 4, "main window constructs all four game tabs");
+                        if (tabs != null && tabs.TabCount == 4) {
+                            string[] expected = { "Hades", "KOF 2002 (MAME)", "Metal Slug 3 (MAME)", "CTR Nitro-Fueled" };
+                            for (int i = 0; i < expected.Length; i++) Check(tabs.TabPages[i].Text == expected[i], "startup tab: " + expected[i]);
+                        }
+                    }
+                } catch (Exception error) { Check(false, "main window startup: " + error.GetType().Name); }
+            });
+            thread.SetApartmentState(ApartmentState.STA);
+            thread.Start(); thread.Join();
+            return failures - before;
+        }
+
         public const string HostileName = "Ana\" } os.exit() --\n]]ñ\U0001F600";
 
         public static string HostileNameBase64 { get { return Convert.ToBase64String(Encoding.UTF8.GetBytes(HostileName)); } }
