@@ -67,6 +67,7 @@ try {
             $server = $null
         }
     }
+    $failed += $t::StartupWindow()
 }
 finally {
     if ($server -and -not $server.HasExited) { Stop-Process -Id $server.Id -Force }

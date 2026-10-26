@@ -113,6 +113,8 @@ namespace Cloud90.GameLink
         readonly Button folderButton = new Button();
         readonly Button uninstallButton = new Button();
 
+        public string TabTitle { get { return host.Title + (host is MameHost ? " (MAME)" : ""); } }
+
         public GamePanel(MainForm form, GameHost host)
         {
             this.form = form;
@@ -289,10 +291,9 @@ namespace Cloud90.GameLink
                 new GamePanel(this, new MameHost("mslug3", "neogeo", "Metal Slug 3")),
                 new GamePanel(this, new CtrHost()),
             };
-            string[] names = { "Hades", "KOF 2002 (MAME)", "Metal Slug 3 (MAME)" };
             for (int i = 0; i < panels.Length; i++)
             {
-                TabPage page = new TabPage(names[i]);
+                TabPage page = new TabPage(panels[i].TabTitle);
                 page.BackColor = Color.FromArgb(18, 18, 26);
                 panels[i].Dock = DockStyle.Fill;
                 page.Controls.Add(panels[i]);
