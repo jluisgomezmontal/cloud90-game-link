@@ -66,6 +66,9 @@ ya publicados ni promesas de compatibilidad.
    defecto, exigir habilitación específica, respetar Modo sin morir y escudo y
    excluirlo de la ruleta predeterminada. Propuesta: 180–300 s para reinicio y
    600 s para muerte, además del límite global existente.
+   Recomiendo un aviso/cuenta atrás de 2–3 s y volver a comprobar contexto,
+   escudo y permisos justo antes de ejecutar. F9 puede cancelar esa orden
+   pendiente; no puede deshacer una muerte o reinicio que ya se ejecutó.
 4. **Prototipo de enemigos separado dentro del mismo PR:** un Run & Gun concreto,
    un prefab del spawner ya cargado, máximo dos o tres refuerzos simultáneos y
    limpieza al cambiar de intento. Probar posición válida, ciclo de vida,
