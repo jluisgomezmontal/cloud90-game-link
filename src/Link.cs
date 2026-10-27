@@ -15,7 +15,7 @@ namespace Cloud90.GameLink
 {
     internal sealed class Link
     {
-        public const string Version = "cloud90-game-link-1.3.0";
+        public const string Version = "cloud90-game-link-1.3.1";
         // "hades", "kof2002": the token and the hello are this game's.
         public readonly string Game;
         readonly string title;
@@ -58,11 +58,11 @@ namespace Cloud90.GameLink
         {
             if (inbox != null && !ReferenceEquals(inbox, value)) inbox.Dispose();
             inbox = value; inbox.SetPaused(paused); inbox.Connected(welcomed);
-            if (Game == "cuphead") { inbox.SetContext(gameContext); inbox.SetPolicy(noDeath, allowDestructive); }
+            if (Game == "cuphead" || Game == "ctrnf") { inbox.SetContext(gameContext); inbox.SetPolicy(noDeath, allowDestructive); }
         }
         public void SetCapabilities(string[] value)
         {
-            if (Game != "cuphead") return;
+            if (Game != "cuphead" && Game != "ctrnf") return;
             string[] next = value ?? new string[0];
             if (capabilities != null && string.Join(",", capabilities) == string.Join(",", next)) return;
             capabilities = next;
@@ -70,14 +70,14 @@ namespace Cloud90.GameLink
         }
         void ApplyPolicy(Dictionary<string, object> message)
         {
-            if (Game != "cuphead") return;
+            if (Game != "cuphead" && Game != "ctrnf") return;
             noDeath = !message.ContainsKey("noDeath") || !(message["noDeath"] is bool) || (bool)message["noDeath"];
             allowDestructive = message.ContainsKey("allowDestructive") && message["allowDestructive"] is bool && (bool)message["allowDestructive"];
             if (inbox != null) inbox.SetPolicy(noDeath, allowDestructive);
         }
         public void SetContext(string epoch)
         {
-            if (Game != "cuphead" || epoch == gameContext) return;
+            if ((Game != "cuphead" && Game != "ctrnf") || epoch == gameContext) return;
             gameContext = epoch ?? "";
             if (inbox != null) inbox.SetContext(gameContext);
             Fire(SendState());
@@ -280,7 +280,7 @@ namespace Cloud90.GameLink
                 string effect = Str(msg, "effect");
                 string reason = null;
                 if (!EffectName.IsMatch(effect)) reason = "efecto desconocido";
-                else if (Game == "cuphead" && (string.IsNullOrEmpty(gameContext) || Str(msg, "epoch") != gameContext)) reason = "intento anterior";
+                else if ((Game == "cuphead" || (Game == "ctrnf" && capabilities != null && Array.IndexOf(capabilities, "fall_void") >= 0)) && (string.IsNullOrEmpty(gameContext) || Str(msg, "epoch") != gameContext)) reason = "intento anterior";
                 else if (paused) reason = "en pausa";
                 else if (inbox == null || !inPlay) reason = "no disponible ahora";
                 if (reason != null)
@@ -293,7 +293,7 @@ namespace Cloud90.GameLink
                 Inbox.Item item = new Inbox.Item();
                 item.Id = id;
                 item.Effect = effect;
-                if (Game == "cuphead") item.Epoch = Str(msg, "epoch");
+                if (Game == "cuphead" || Game == "ctrnf") item.Epoch = Str(msg, "epoch");
                 item.Ms = Math.Max(0, Math.Min(ms, 120000));
                 item.By = Str(msg, "by");
                 item.Safe = msg.ContainsKey("safe") && msg["safe"] is bool && (bool)msg["safe"];
@@ -329,6 +329,18 @@ namespace Cloud90.GameLink
             else if (line == "pause 1" || line == "pause 0")
             {
                 SetPaused(line.EndsWith("1"));
+            }
+            else if (Game == "ctrnf" && line.StartsWith("context "))
+            {
+                string value = line.Substring(8);
+                if (System.Text.RegularExpressions.Regex.IsMatch(value, "^[A-Za-z0-9_-]{1,100}$")) SetContext(value);
+            }
+            else if (Game == "ctrnf" && line.StartsWith("capabilities "))
+            {
+                string[] values = line.Substring(13).Split(',');
+                bool valid = values.Length <= 80;
+                foreach (string value in values) if (!System.Text.RegularExpressions.Regex.IsMatch(value, "^[a-z0-9_]{1,40}$")) valid = false;
+                SetCapabilities(valid ? values : new string[0]);
             }
             else if (line.StartsWith("state "))
             {
@@ -369,8 +381,8 @@ namespace Cloud90.GameLink
         Task SendState()
         {
             var message = new Dictionary<string, object> { { "type", "state" }, { "paused", paused }, { "inPlay", inPlay } };
-            if (Game == "cuphead") message["epoch"] = gameContext;
-            if (Game == "cuphead" && capabilities != null) message["capabilities"] = capabilities;
+            if (Game == "cuphead" || Game == "ctrnf") message["epoch"] = gameContext;
+            if ((Game == "cuphead" || Game == "ctrnf") && capabilities != null) message["capabilities"] = capabilities;
             return Send(message);
         }
 

@@ -7,7 +7,7 @@ One small Windows app for every PC game Cloud90 supports, a tab per game:
 | Game | How | Needs |
 |---|---|---|
 | **Cuphead + The Delicious Last Course** | BepInEx plugin with a local session, heartbeat and per-attempt commands. Health, movement and control effects in solo levels. | Cuphead on Steam, Windows x64 build 20241530; DLC optional and separately owned. See [build and validation notes](mod/cuphead/README.md). |
-| **CTR Nitro-Fueled** | Side-by-side native offline bridge; Wumpa, weapons, turbo and timed controls. JSON inbox and native acknowledgements. | OCTR v0.6.4 portable, the separately installed [CTR Cloud90 module](https://github.com/jluisgomezmontal/ctr-cloud90/blob/feat/cloud90-game-link/CLOUD90.md), and the exact supported CUSA13795 1.21 image |
+| **CTR Nitro-Fueled** | Side-by-side native offline bridge; Wumpa, weapons, turbo and timed controls. JSON inbox and native acknowledgements. | OCTR v0.6.4 portable, the separately installed [CTR Cloud90 module](https://github.com/jluisgomezmontal/ctr-cloud90/blob/main/CLOUD90.md), and the exact supported CUSA13795 1.21 image |
 | **Hades** | `mod/Cloud90.lua`, a mod for the game's own Lua (one `Import` line at the end of `RoomManager.lua`, with a backup). It reads `Content/Scripts/Cloud90Inbox.lua` with `loadfile` and answers on the game's console. | Hades on Steam (Windows) |
 | **The King of Fighters 2002** | `mame/plugins/cloud90`, a MAME plugin. It reads `inbox.lua` and answers in `acks.txt` (in `%LOCALAPPDATA%\Cloud90GameLink\mame\kof2002`). Only during a round of a game you started, vs the CPU. | [MAME](https://www.mamedev.org) and your own `kof2002.zip` + `neogeo.zip` |
 | **Metal Slug 3** | The same MAME plugin (`...\mame\mslug3`): lives, grenades, weapons, timer, invincibility, and enemies copied from the ones on screen (taken from the game's own free list of objects). Only while playing a game you started. | MAME and your own `mslug3.zip` + `neogeo.zip` |
@@ -19,7 +19,7 @@ game side, and opens the game itself so it can read the game's answers.
 
 Nothing of any game is included or distributed: no game files, no ROMs, no BIOS.
 
-CTR requires Game Link 1.2.2 and the updated module with `launcherBridgeVersion=1`.
+CTR basic effects support the older module. The new gravity, squash, fall and chaos effects require Game Link 1.3.1 and CTR bridge 2. CTR requires Game Link 1.2.2 or later and the updated module with `launcherBridgeVersion=1`.
 Install its module with CTR and its client closed, select the portable folder
 in its tab and launch from Game Link. This opens the original
 `Crash™ Team Racing Nitro-Fueled.exe` client; use its Play button. Its language,
@@ -32,6 +32,17 @@ effects. CTR commands have a per-launch session and heartbeat; disconnects
 clear pending commands. Installation preserves the original runtime and saves;
 uninstall removes only the module's three validated files. See the module's
 documentation for the supported image hash and current validation limits.
+
+## CTR bridge 2
+
+CTR module capabilities and race epochs are relayed to the backend. New effects
+require module bridge 2 and this 1.3.1 connector; bridge 1 retains baseline
+support. Welcome/policy and per-command authorization reach the native inbox.
+Fall requires explicit permission and no-death off. Install both downloads from
+the new release with CTR and Game Link closed. The module owns only its existing
+three files; the original launcher, runtime, game data and saves are preserved.
+All four actions appear in the platform test panel after deploying the matching
+backend/frontend PRs. Their real-game validation remains with the owner.
 
 ## Build
 
