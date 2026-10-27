@@ -63,5 +63,12 @@ namespace Cloud90.Cuphead
             return null;
         }
         public static bool Fresh(long heartbeat, long now) { return heartbeat > 0 && heartbeat <= now && now - heartbeat <= 3000; }
+        public static string HealRefusal(int health, int maximum)
+        {
+            if (health >= maximum) return "vida completa";
+            // Native SetHealth(9) unlocks the DLC HP9 Steam achievement.
+            if (health >= 8) return "curacion a 9 HP no compatible";
+            return null;
+        }
     }
 }

@@ -51,6 +51,7 @@ and a three-second transport grace period were added and retested.
 
 - The eleven real effects have representative ground tests. Airplane movement, control inversion and shooting also have live confirmations.
 - Co-op, King's Leap, graveyard and boss hubs are deliberately unavailable.
+- Healing from 8 to 9 HP is deliberately refused to avoid the native HP9 achievement side effect; this boundary is covered by a policy test.
 - No full boss clear/all Saltbaker phase-transition stress test, 20-entry soak test,
   DLC-disabled installation or complete controller matrix has been completed.
 - Real production gifts and non-monetary events require merged backend/client/

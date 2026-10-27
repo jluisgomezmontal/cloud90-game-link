@@ -20,7 +20,10 @@ Movement speed changes are scoped to player movement, not global game time.
 The plugin enables background updates so the local bridge can report state
 while Game Link is focused; it restores the prior setting when unloaded.
 
-Health is clamped to the equipped character's current maximum. Damage respects
+Health is clamped to the equipped character's current maximum.
+Healing from 8 to 9 HP is refused because the native setter
+would unlock a Steam achievement; native gameplay can still reach 9 HP normally.
+Damage respects
 native protection and the no-death flag. There are no inventory, unlock, save,
 shop or progress commands. The shield blocks Cloud90 troll commands, not enemies.
 A command is acknowledged only after application or with a specific refusal.

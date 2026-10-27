@@ -144,7 +144,8 @@ namespace Cloud90.Cuphead
             switch (c.effect)
             {
                 case "heal":
-                    if (stats.Health >= stats.HealthMax) return "vida completa";
+                    string healingRefusal = EffectState.HealRefusal(stats.Health, stats.HealthMax);
+                    if (healingRefusal != null) return healingRefusal;
                     stats.SetHealth(Math.Min(stats.HealthMax, stats.Health + 1)); return null;
                 case "damage":
                     if (c.safe && stats.Health <= 1) return "modo sin morir";

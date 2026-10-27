@@ -23,6 +23,8 @@ namespace Cloud90.GameLink
             c.epoch = "new"; c.expiresMs = 4999; Check(EffectState.Reject(c, "new", 5000) == "comando caducado", "expired effects rejected");
             c.expiresMs = 9000; c.ms = 16000; Check(EffectState.Reject(c, "new", 5000) == "duracion invalida", "duration bounded");
             Check(!EffectState.Fresh(1000, 4001) && !EffectState.Fresh(5000, 4000) && EffectState.Fresh(1000, 3000), "heartbeat fails closed after timeout and for future clocks");
+            Check(EffectState.HealRefusal(3, 4) == null && EffectState.HealRefusal(4, 4) == "vida completa", "healing respects Ms. Chalice's actual maximum");
+            Check(EffectState.HealRefusal(8, 9) != null && EffectState.HealRefusal(7, 9) == null, "Cloud90 healing cannot trigger the native nine-HP achievement");
             Directory.CreateDirectory(root);
             bool traversal = false; try { CupheadInstaller.SafePath(root, "../outside"); } catch (InvalidDataException) { traversal = true; }
             Check(traversal, "installer rejects traversal");

@@ -16,7 +16,11 @@ try {
     $sources = @(Get-ChildItem (Join-Path $root 'src') -Filter *.cs | ForEach-Object { $_.FullName }) + (Join-Path $PSScriptRoot 'LinkTests.cs') + (Join-Path $PSScriptRoot 'CupheadTests.cs') + (Join-Path $root 'mod\cuphead\Protocol.cs')
     $jsonRefs = @()
     if ($JsonDll) {
-        if ((Get-FileHash -LiteralPath $JsonDll -Algorithm SHA256).Hash.ToLowerInvariant() -ne '0f89b82c6b76816b17286951ba83201c71b6611f3e75e907552247dfc72034f2') { throw 'Wrong Newtonsoft.Json test dependency' }
+        # Avoid Get-FileHash autoload issues in a legacy PowerShell child of pwsh.
+        $sha = [Security.Cryptography.SHA256]::Create()
+        try { $jsonHash = [BitConverter]::ToString($sha.ComputeHash([IO.File]::ReadAllBytes($JsonDll))).Replace('-','').ToLowerInvariant() }
+        finally { $sha.Dispose() }
+        if ($jsonHash -ne '0f89b82c6b76816b17286951ba83201c71b6611f3e75e907552247dfc72034f2') { throw 'Wrong Newtonsoft.Json test dependency' }
         Copy-Item -LiteralPath $JsonDll -Destination (Join-Path $work 'Newtonsoft.Json.dll')
         $jsonRefs += "/r:$(Join-Path $work 'Newtonsoft.Json.dll')"
         $sources += @((Join-Path $root 'mod\cuphead\BridgeJson.cs'), (Join-Path $PSScriptRoot 'BridgeJsonTests.cs'))
