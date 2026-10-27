@@ -25,6 +25,14 @@ namespace Cloud90.GameLink
             Check(!EffectState.Fresh(1000, 4001) && !EffectState.Fresh(5000, 4000) && EffectState.Fresh(1000, 3000), "heartbeat fails closed after timeout and for future clocks");
             Check(EffectState.HealRefusal(3, 4) == null && EffectState.HealRefusal(4, 4) == "vida completa", "healing respects Ms. Chalice's actual maximum");
             Check(EffectState.HealRefusal(8, 9) != null && EffectState.HealRefusal(7, 9) == null, "Cloud90 healing cannot trigger the native nine-HP achievement");
+            Check(EffectState.ValidArgument("spawn_enemies", "2") && !EffectState.ValidArgument("spawn_enemies", "100") && !EffectState.ValidArgument("kill", "yes"), "effect arguments restrict spawn counts and destructive commands");
+            var lethal = new Command { effect="kill",safe=false,allowDestructive=true };
+            Check(EffectState.DestructiveRefusal(lethal,false,true,false) == null && EffectState.DestructiveRefusal(lethal,true,true,false) != null && EffectState.DestructiveRefusal(lethal,false,false,false) != null && EffectState.DestructiveRefusal(lethal,false,true,true) != null, "destructive actions require current permission, no-death off and no shield");
+            lethal.allowDestructive=false;
+            Check(EffectState.DestructiveRefusal(lethal,false,true,false) != null, "old commands cannot acquire a newly enabled permission");
+            Check(EffectState.IceVelocity(300,0,0.1f) == 265 && EffectState.IceVelocity(300,-300,0.1f) == 230 && EffectState.IceVelocity(0,300,100) == 300, "ice brakes gradually, reverses gradually and never overshoots");
+            state.Set("ice_floor",100000); state.Step(8.1f);
+            Check(!state.Active("ice_floor"), "ice duration cannot exceed eight seconds");
             Directory.CreateDirectory(root);
             bool traversal = false; try { CupheadInstaller.SafePath(root, "../outside"); } catch (InvalidDataException) { traversal = true; }
             Check(traversal, "installer rejects traversal");

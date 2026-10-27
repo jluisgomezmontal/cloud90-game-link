@@ -126,6 +126,7 @@ namespace Cloud90.GameLink
             public int Ms;
             public string By;
             public bool Safe;
+            public bool AllowDestructive;
             // The streamer's pick for the effect (an enemy's name), or "".
             public string Arg = "";
             public string Epoch = "";
@@ -136,6 +137,7 @@ namespace Cloud90.GameLink
         readonly object gate = new object();
         readonly List<Item> items = new List<Item>();
         bool paused;
+        bool noDeath = true, allowDestructive;
         readonly string session;
         readonly System.Threading.Timer heartbeat;
         bool connected;
@@ -196,6 +198,7 @@ namespace Cloud90.GameLink
 
         public void SetPaused(bool value) { lock (gate) { paused = value; if (value) items.Clear(); Write(); } }
         public void SetContext(string epoch) { lock (gate) { context = epoch ?? ""; } }
+        public void SetPolicy(bool safe, bool allow) { lock (gate) { noDeath = safe; allowDestructive = allow; Write(); } }
 
         public static string LuaString(string s)
         {
@@ -246,9 +249,9 @@ namespace Cloud90.GameLink
             {
                 double remaining = 10000 - (DateTime.UtcNow - i.Sent).TotalMilliseconds;
                 if (remaining <= 0) continue;
-                effects.Add(new { id = i.Id, effect = i.Effect, ms = i.Ms, arg = i.Arg, safe = i.Safe, epoch = i.Epoch, expiresMs = now + (ulong)remaining });
+                effects.Add(new { id = i.Id, effect = i.Effect, ms = i.Ms, arg = i.Arg, safe = i.Safe, epoch = i.Epoch, allowDestructive = i.AllowDestructive, expiresMs = now + (ulong)remaining });
             }
-            string text = new JavaScriptSerializer().Serialize(new { session = session, heartbeatMs = now, paused = paused || !connected, effects = effects });
+            string text = new JavaScriptSerializer().Serialize(new { session = session, heartbeatMs = now, paused = paused || !connected, noDeath = noDeath, allowDestructive = allowDestructive, effects = effects });
             try {
                 string temp = path + ".tmp";
                 File.WriteAllText(temp, text, new UTF8Encoding(false));

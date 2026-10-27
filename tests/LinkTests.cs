@@ -277,7 +277,7 @@ namespace Cloud90.GameLink
             using (Inbox inbox = new Inbox(inboxPath, "protocol-session")) {
                 inbox.SetContext("attempt-1");
                 link.UseInbox(inbox);
-                if (game == "cuphead") link.SetContext("attempt-1");
+                if (game == "cuphead") { link.SetContext("attempt-1"); link.SetCapabilities(new[] { "heal", "ice_floor" }); }
                 link.Start();
                 Thread.Sleep(1500);
                 link.OnModLine("state 1");
@@ -290,10 +290,12 @@ namespace Cloud90.GameLink
                 }
                 Check(game == "cuphead" ? text.Contains("heal") && text.Contains("\"safe\":true") && text.Contains("attempt-1") : text.Contains("give_item") && text.Contains("missile"), game + " WebSocket command reaches JSON inbox with the expected safety fields");
                 Check(text.Contains("protocol-session") && text.Contains("expiresMs"), "CTR command has its session and expiry");
+                if (game == "cuphead") Check(text.Contains("\"noDeath\":false") && text.Contains("\"allowDestructive\":true"), "Cuphead welcome and per-command permissions reach the native bridge");
                 link.OnModLine("ack e-42 ok");
                 if (game == "cuphead") link.SetContext("attempt-2");
                 Thread.Sleep(500);
                 Check(!ReadShared(inboxPath).Contains("e-42"), game + " native acknowledgement clears the command");
+                if (game == "cuphead") Check(ReadShared(inboxPath).Contains("\"noDeath\":true") && ReadShared(inboxPath).Contains("\"allowDestructive\":false"), "Cuphead permission revocation reaches a running bridge");
                 link.Stop();
             }
             return failures - before;

@@ -199,7 +199,7 @@ namespace Cloud90.GameLink
                         if (!File.Exists(statusPath) || new FileInfo(statusPath).Length > 65536) { if (starting && DateTime.UtcNow > deadline) throw new IOException("El plugin Cuphead no confirmó el arranque"); return; }
                         var status = json.Deserialize<Dictionary<string, object>>(ReadShared(statusPath));
                         long now = (long)GetTickCount64(), heartbeat = Convert.ToInt64(status["heartbeatMs"]);
-                        if ((string)status["session"] != session || (string)status["bridgeVersion"] != "cloud90-cuphead-1" || now < heartbeat || now - heartbeat > 3000)
+                        if ((string)status["session"] != session || (string)status["bridgeVersion"] != "cloud90-cuphead-2" || now < heartbeat || now - heartbeat > 3000)
                         { lastInPlay = false; link.OnModLine("state 0"); return; }
                         if (game == null)
                         {
@@ -208,6 +208,13 @@ namespace Cloud90.GameLink
                             game = candidate; starting = false; Log.Write("Cuphead: plugin listo, DLC " + status["dlc"]);
                         }
                         link.SetContext((string)status["epoch"]);
+                        object capabilityValue;
+                        var available = new List<string>();
+                        if (status.TryGetValue("capabilities", out capabilityValue) && capabilityValue is System.Collections.IEnumerable)
+                            foreach (object effect in (System.Collections.IEnumerable)capabilityValue)
+                                if (effect is string && Regex.IsMatch((string)effect, "^[a-z0-9_]{1,40}$") && available.Count < 80) available.Add((string)effect);
+                        available.Sort(StringComparer.Ordinal);
+                        link.SetCapabilities(available.ToArray());
                         bool inPlay = (bool)status["inPlay"];
                         if (lastInPlay != inPlay) { lastInPlay = inPlay; link.OnModLine(inPlay ? "state 1" : "state 0"); }
                         bool paused = (bool)status["paused"];

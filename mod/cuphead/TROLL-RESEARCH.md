@@ -1,12 +1,16 @@
 # Investigación: más efectos troll para Cuphead
 
-Fecha: 2026-10-27. Estado: **propuesta técnica; los efectos de este documento no están implementados ni validados en juego**.
+Fecha: 2026-10-27. Estado: **los doce candidatos están implementados en los mismos PR; su validación visual dentro del juego sigue pendiente por decisión del usuario**.
 
 Se revisó la instalación Steam x64 build 20241530 que ya usamos para las pruebas,
 el plugin Cloud90 existente y fuentes públicas de otros mods. Los resultados de
 análisis estático no equivalen a una prueba real. Este documento amplía el diseño
-en el mismo PR #5; no publica nuevos efectos en el catálogo ni cambia las reglas
-que ya estén configuradas.
+en el mismo PR #5. La ampliación ya agrega los doce efectos al catálogo y a
+«Probar un efecto», conservando las reglas que el usuario tenga configuradas.
+Los apartados siguientes conservan la investigación original; los límites finales
+y el estado de pruebas están en [README.md](README.md) y [VALIDATION.md](VALIDATION.md).
+Petrificación quedó limitada a avión porque solo ese controlador se suscribe al
+evento nativo; refuerzos requieren un spawner permitido de Run & Gun.
 
 ## Evidencia principal
 

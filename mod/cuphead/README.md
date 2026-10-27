@@ -28,6 +28,41 @@ native protection and the no-death flag. There are no inventory, unlock, save,
 shop or progress commands. The shield blocks Cloud90 troll commands, not enemies.
 A command is acknowledged only after application or with a specific refusal.
 
+## Additional troll effects
+
+The catalog now includes 23 real effects plus roulette. The twelve additions are:
+
+| Effect | Scope / behavior |
+|---|---|
+| Ice floor | Ground, inertia and gradual braking, up to 8 s |
+| Wind push | Ground, left/right movement push, up to 5 s |
+| Explosion | Procedural visual burst and one normal 1-HP damage attempt |
+| Burn | Procedural flames, one damage attempt immediately and another at 3 s; up to 6 s |
+| Drain super | Clears current cards; does not alter loadout |
+| Petrify | Native airplane stone state, up to 3 s; inputs can break it earlier |
+| Auto jump | Grounded single jumps spaced at least 0.9 s apart, up to 8 s |
+| Weak shots | Player-one basic damage at 50%; EX/supers excluded, up to 10 s |
+| Camera zoom | Visual 15% closer orthographic view; restores native size, up to 8 s |
+| Enemy reinforcements | Only compatible loaded ground spawners in Platforming_Level_1_1 / 1_2; 1–2 enemies, at most 3 active, removed after 15 gameplay seconds or F9 |
+| Restart level | Native retry after 3-second warning; default cooldown 180 s, hard minimum 120 s |
+| Kill | Native player death after 3-second warning; default cooldown 600 s, hard minimum 300 s |
+
+All appear in **Probar un efecto** and the rule selector. The bridge reports
+contextual capabilities; unsupported effects stay visible with a reason and are
+refused by both backend and plugin. Roulette filters the current capabilities.
+Kill/restart require **Permitir muerte y reinicio**, **Modo sin morir** off, and
+saved settings. Both permissions are checked again immediately before execution.
+F9, lost heartbeat, shield, changed permissions or attempt cancel pending actions.
+The 3-second warning runs only during active gameplay, and command expiry still
+runs while the game is paused. Kill/retry use normal game behavior, including its
+normal death statistics. They are excluded from the default roulette pool.
+No-death protects direct Cloud90 damage; enemies and ordinary level hazards keep
+their normal behavior. The extra enemies use only loaded prefabs, never bosses.
+
+These twelve additions compile and have automated integration/policy coverage;
+**they have not yet been visually verified in the real game**. The owner chose to
+perform their gameplay validation after deployment. See VALIDATION.md before release.
+
 ## Build the complete client
 
 Use your legally installed game as compile references and extract the pinned

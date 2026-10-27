@@ -12,7 +12,7 @@ New-Item -ItemType Directory -Force $out | Out-Null
 $refs = @('mscorlib.dll','System.dll','System.Core.dll','Assembly-CSharp.dll','UnityEngine.dll','UnityEngine.CoreModule.dll','UnityEngine.IMGUIModule.dll','UnityEngine.InputModule.dll','UnityEngine.JSONSerializeModule.dll','UnityEngine.Physics2DModule.dll','Rewired_Core.dll') | ForEach-Object { '/r:' + (Join-Path $managed $_) }
 $refs += @(( '/r:' + (Join-Path $core 'BepInEx.dll')), ('/r:' + (Join-Path $core '0Harmony.dll')))
 $refs += '/r:' + $JsonDll
-& "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /noconfig /target:library /nostdlib /optimize+ "/out:$out\Cloud90.Cuphead.dll" @refs (Join-Path $PSScriptRoot 'Protocol.cs') (Join-Path $PSScriptRoot 'BridgeJson.cs') (Join-Path $PSScriptRoot 'Plugin.cs')
+& "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /noconfig /target:library /nostdlib /optimize+ "/out:$out\Cloud90.Cuphead.dll" @refs (Join-Path $PSScriptRoot 'Protocol.cs') (Join-Path $PSScriptRoot 'BridgeJson.cs') (Join-Path $PSScriptRoot 'Plugin.cs') (Join-Path $PSScriptRoot 'TrollEffects.cs')
 if ($LASTEXITCODE -ne 0) { throw 'Cuphead plugin build failed' }
 Get-FileHash -LiteralPath "$out\Cloud90.Cuphead.dll" -Algorithm SHA256
 Copy-Item -LiteralPath $JsonDll -Destination "$out\Newtonsoft.Json.dll" -Force

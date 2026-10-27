@@ -40,12 +40,32 @@ and a three-second transport grace period were added and retested.
   malformed/truncated JSON, duplicate properties and incorrect primitive types.
 - Installer: traversal rejection, ownership-only removal, modified-file refusal
   and preservation of a shared loader when another plugin exists. Full-package smoke tests also passed for fresh install/uninstall, compatible pre-existing loader, and conflict rejection without altering game files.
-- Backend: 679 tests passed, 3 existing tests skipped; typecheck and build passed.
+- Backend: 682 tests passed, 3 existing tests skipped; typecheck and build passed.
 - Frontend: 36 tests passed; targeted lint, typecheck and production build passed
   with the exact locked dependencies (Next.js 16.4.3). Desktop/mobile mock-API QA;
   keyboard navigation into Cuphead; mobile instructions no longer overflow.
   WCAG A/AA axe found zero violations in the main configuration region and on the mobile page after fixes. A pre-existing desktop sidebar brand-icon finding remains outside this change.
   This is automated checking, not a claim of exhaustive accessibility compliance.
+
+## Additional effects — implementation update
+
+Implemented ice_floor, wind_push, explosion, burn, super_drain, petrify,
+auto_jump, weak_shots, camera_zoom, spawn_enemies, restart_level and kill.
+All twelve are in the backend catalog and the frontend test panel / rule selector.
+Context capabilities, strict optional policy fields, per-command authorization,
+live permission revocation, hard destructive cooldown floors and roulette
+capability changes are covered by automated tests. Full client compilation and
+fresh/shared/conflicting installer smoke tests passed with the new package.
+
+**None of these twelve additions has a human gameplay confirmation yet.**
+The owner asked to finish/push these PRs and will test them in production.
+Prior real-game confirmations above apply to the original eleven effects only.
+Pending checks include native Harmony load for the new hooks, inertia/collision,
+burn timing and last HP, stone ownership, weak-shot damage, camera restoration,
+reinforcement availability/placement/lifecycle/pacifist behavior, countdown
+cancellation, death screen and retry across ground, airplane and DLC contexts.
+Enemy spawning is intentionally limited to two Run & Gun levels with a loaded
+whitelisted spawner; it is not available in arbitrary boss fights.
 
 ## Release gates / limits
 
