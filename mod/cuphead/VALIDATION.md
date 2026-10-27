@@ -44,7 +44,7 @@ and a three-second transport grace period were added and retested.
 - Frontend: 36 tests passed; targeted lint, typecheck and production build passed
   with the exact locked dependencies (Next.js 16.4.3). Desktop/mobile mock-API QA;
   keyboard navigation into Cuphead; mobile instructions no longer overflow.
-  WCAG A/AA axe run on the game configuration found zero violations after fixes.
+  WCAG A/AA axe found zero violations in the main configuration region and on the mobile page after fixes. A pre-existing desktop sidebar brand-icon finding remains outside this change.
   This is automated checking, not a claim of exhaustive accessibility compliance.
 
 ## Release gates / limits

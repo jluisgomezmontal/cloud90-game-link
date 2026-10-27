@@ -64,7 +64,7 @@ its assemblies, plus the Cloud90 plugin and Newtonsoft.Json. Notices from
 - https://github.com/pardeike/Harmony
 - https://github.com/jbevain/cecil
 - https://github.com/MonoMod/MonoMod
-- https://github.com/NeighTools/UnityDoorstop
+- https://github.com/NeighTools/UnityDoorstop/tree/v4.6.0
 - https://github.com/JamesNK/Newtonsoft.Json/tree/13.0.3
 
 ## Validation status
