@@ -25,9 +25,11 @@ namespace Cloud90.GameLink
                 File.Exists(Path.Combine(dir, "bin", "sacredfire.exe")) && File.Exists(Path.Combine(dir, "python", "python.exe"));
         }
         internal static string Runtime(string dir) { return Path.Combine(dir, "bin", "sacredfire-cloud90.exe"); }
+        internal static string Launcher(string dir) { return Path.Combine(dir, "Crash\u2122 Team Racing Nitro-Fueled.exe"); }
         public override string Problem(Settings s)
         {
             if (!IsPortable(s.CtrDir)) return "no encontré CTR: elige la carpeta del portable";
+            if (!File.Exists(Launcher(s.CtrDir))) return "no encontré el cliente Crash™ Team Racing Nitro-Fueled.exe en el portable";
             string manifest = Path.Combine(s.CtrDir, "bin", "cloud90-ctr.json");
             string wrapper = Path.Combine(s.CtrDir, "cloud90_run.py");
             if (!File.Exists(manifest) || !File.Exists(Runtime(s.CtrDir)) || !File.Exists(wrapper))
@@ -36,6 +38,8 @@ namespace Cloud90.GameLink
                 var m = new JavaScriptSerializer().Deserialize<Dictionary<string, string>>(File.ReadAllText(manifest));
                 if (m["bridgeVersion"] != "cloud90-ctr-1" || m["gameImageSha256"] != "9952a20911931dcd0a54fe19135117d96934d17c43b7ced103a4aa7fda783c31")
                     return "módulo CTR no compatible; instala la versión Cloud90";
+                if (!m.ContainsKey("launcherBridgeVersion") || m["launcherBridgeVersion"] != "1")
+                    return "actualiza el módulo CTR Cloud90 para abrir el cliente con sus ajustes";
                 using (var sha = SHA256.Create()) using (var f = File.OpenRead(Runtime(s.CtrDir))) {
                     string hash = BitConverter.ToString(sha.ComputeHash(f)).Replace("-", "").ToLowerInvariant();
                     if (hash != m["runtimeSha256"]) return "el runtime CTR cambió; reinstala el módulo compatible";
@@ -62,13 +66,13 @@ namespace Cloud90.GameLink
             return inbox;
         }
         public override bool Running { get { return process != null && !process.HasExited; } }
-        public override bool AnotherRunning() { return Process.GetProcessesByName("sacredfire").Length > 0 || Process.GetProcessesByName("sacredfire-cloud90").Length > 0; }
+        public override bool AnotherRunning() { return Process.GetProcessesByName("sacredfire").Length > 0 || Process.GetProcessesByName("sacredfire-cloud90").Length > 0 || Process.GetProcessesByName("Crash\u2122 Team Racing Nitro-Fueled").Length > 0; }
         public override void Start(Settings s, Link link, Action exited)
         {
             string problem = Problem(s);
             if (problem.Length > 0) throw new InvalidOperationException(problem);
             ProcessStartInfo info = new ProcessStartInfo(Path.Combine(s.CtrDir, "python", "python.exe"));
-            info.Arguments = "-X utf8 \"" + Path.Combine(s.CtrDir, "cloud90_run.py") + "\"";
+            info.Arguments = "-X utf8 \"" + Path.Combine(s.CtrDir, "cloud90_run.py") + "\" --launcher";
             info.WorkingDirectory = s.CtrDir;
             info.UseShellExecute = false;
             info.CreateNoWindow = true;

@@ -18,8 +18,14 @@ game side, and opens the game itself so it can read the game's answers.
 
 Nothing of any game is included or distributed: no game files, no ROMs, no BIOS.
 
-CTR requires Game Link 1.2.0. Install its module with CTR closed, select the
-portable folder in its tab and launch from Game Link. Play a local Arcade
+CTR requires Game Link 1.2.2 and the updated module with `launcherBridgeVersion=1`.
+Install its module with CTR and its client closed, select the portable folder
+in its tab and launch from Game Link. This opens the original
+`Crash™ Team Racing Nitro-Fueled.exe` client; use its Play button. Its language,
+display, audio and controller settings remain managed by that client. The
+native bridge relays state and acknowledgements through a per-session file,
+independent of the client's console capture. Stopping the game clears the
+playing state within three seconds, even if the client stays open. Play a local Arcade
 normal race with one human against CPU. F9 and the app's pause button stop
 effects. CTR commands have a per-launch session and heartbeat; disconnects
 clear pending commands. Installation preserves the original runtime and saves;

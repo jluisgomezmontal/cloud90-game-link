@@ -78,6 +78,20 @@ namespace Cloud90.GameLink
                 Check((bool)root["paused"], "CTR disconnect pauses the runtime");
             }
             Check(!CtrHost.IsPortable(folder), "CTR rejects a folder containing only an inbox");
+            Directory.CreateDirectory(Path.Combine(folder, "bin"));
+            Directory.CreateDirectory(Path.Combine(folder, "python"));
+            File.WriteAllText(Path.Combine(folder, "run.py"), "");
+            File.WriteAllText(Path.Combine(folder, "python", "python.exe"), "");
+            File.WriteAllText(Path.Combine(folder, "bin", "sacredfire.exe"), "");
+            File.WriteAllText(CtrHost.Runtime(folder), "");
+            File.WriteAllText(Path.Combine(folder, "cloud90_run.py"), "");
+            Settings settings = new Settings();settings.CtrDir = folder;
+            CtrHost host = new CtrHost();
+            Check(host.Problem(settings).Contains("cliente"), "CTR requires the original client");
+            File.WriteAllText(CtrHost.Launcher(folder), "");
+            File.WriteAllText(Path.Combine(folder, "bin", "cloud90-ctr.json"),
+                "{\"bridgeVersion\":\"cloud90-ctr-1\",\"gameImageSha256\":\"9952a20911931dcd0a54fe19135117d96934d17c43b7ced103a4aa7fda783c31\"}");
+            Check(host.Problem(settings).Contains("actualiza el módulo"), "CTR rejects old wrappers before opening the client");
             return failures - before;
         }
 
