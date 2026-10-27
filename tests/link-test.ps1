@@ -2,7 +2,7 @@
 # library, then checks the inbox (read back with real Lua), the installer on a
 # fake Hades folder, and the protocol against tests/fake-server.js.
 #   powershell -ExecutionPolicy Bypass -File tests\link-test.ps1 [-WsModule <path to ws>]
-param([string]$WsModule = '')
+param([string]$WsModule = '', [string]$JsonDll = '')
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $work = Join-Path ([IO.Path]::GetTempPath()) ('c90hl-test-' + [Guid]::NewGuid().ToString('N'))
@@ -13,10 +13,21 @@ $server = $null
 try {
     $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
     $dll = Join-Path $work 'LinkTests.dll'
-    $sources = @(Get-ChildItem (Join-Path $root 'src') -Filter *.cs | ForEach-Object { $_.FullName }) + (Join-Path $PSScriptRoot 'LinkTests.cs')
-    & $csc /nologo /target:library "/out:$dll" /r:System.Web.Extensions.dll /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Security.dll /r:System.Core.dll @sources
+    $sources = @(Get-ChildItem (Join-Path $root 'src') -Filter *.cs | ForEach-Object { $_.FullName }) + (Join-Path $PSScriptRoot 'LinkTests.cs') + (Join-Path $PSScriptRoot 'CupheadTests.cs') + (Join-Path $root 'mod\cuphead\Protocol.cs')
+    $jsonRefs = @()
+    if ($JsonDll) {
+        if ((Get-FileHash -LiteralPath $JsonDll -Algorithm SHA256).Hash.ToLowerInvariant() -ne '0f89b82c6b76816b17286951ba83201c71b6611f3e75e907552247dfc72034f2') { throw 'Wrong Newtonsoft.Json test dependency' }
+        Copy-Item -LiteralPath $JsonDll -Destination (Join-Path $work 'Newtonsoft.Json.dll')
+        $jsonRefs += "/r:$(Join-Path $work 'Newtonsoft.Json.dll')"
+        $sources += @((Join-Path $root 'mod\cuphead\BridgeJson.cs'), (Join-Path $PSScriptRoot 'BridgeJsonTests.cs'))
+    }
+    & $csc /nologo /target:library "/out:$dll" /r:System.Web.Extensions.dll /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Security.dll /r:System.Core.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll @jsonRefs @sources
     if ($LASTEXITCODE -ne 0) { throw 'csc failed' }
     [Reflection.Assembly]::LoadFrom($dll) | Out-Null
+    if ($JsonDll) {
+        [Reflection.Assembly]::LoadFrom((Join-Path $work 'Newtonsoft.Json.dll')) | Out-Null
+        $failed += [BridgeJsonTests]::Run()
+    }
     $t = [Cloud90.GameLink.LinkTests]
 
     # 1. Inbox, read back by Lua.
@@ -33,10 +44,11 @@ try {
      $failed += $t::Mame((Join-Path $work 'Mame'))
     $failed += $t::NetworkSecurity()
     $failed += $t::CtrInbox((Join-Path $work 'ctrnf'))
+    $failed += [Cloud90.GameLink.CupheadTests]::Run((Join-Path $work 'cuphead'))
 
     # 3. Protocol.
     if ($WsModule) { $env:WS_MODULE = $WsModule }
-    foreach ($mode in @('normal', 'oversize', 'ctr')) {
+    foreach ($mode in @('normal', 'oversize', 'ctr', 'cuphead')) {
         $listener = New-Object Net.Sockets.TcpListener([Net.IPAddress]::Loopback, 0)
         $listener.Start()
         $port = $listener.LocalEndpoint.Port
@@ -53,13 +65,16 @@ try {
             }
             if ($mode -eq 'normal') { $failed += $t::Protocol("http://127.0.0.1:$port", (Join-Path $work 'inbox2.lua')) }
             elseif ($mode -eq 'ctr') { $failed += $t::CtrProtocol("http://127.0.0.1:$port", (Join-Path $work 'ctr-protocol.json')) }
+            elseif ($mode -eq 'cuphead') { $failed += $t::CupheadProtocol("http://127.0.0.1:$port", (Join-Path $work 'cuphead-protocol.json')) }
             else { $failed += $t::OversizedProtocol("http://127.0.0.1:$port") }
             $server.WaitForExit(5000) | Out-Null
             $got = Get-Content -LiteralPath $log -Encoding UTF8
             $got | ForEach-Object { "  server: $_" }
-            $helloGame = if ($mode -eq 'ctr') { 'ctrnf' } else { 'kof2002' }
-            if (-not ($got -match ('"type":"hello","game":"' + $helloGame + '","version":"cloud90-game-link-1.2.0"'))) { "FAIL: no hello"; $failed++ }
+            $helloGame = if ($mode -eq 'ctr') { 'ctrnf' } elseif ($mode -eq 'cuphead') { 'cuphead' } else { 'kof2002' }
+            if (-not ($got -match ('"type":"hello","game":"' + $helloGame + '","version":"cloud90-game-link-1.3.0"'))) { "FAIL: no hello"; $failed++ }
             if ($mode -eq 'ctr' -and -not ($got -match '"type":"ack","id":"e-42","ok":true')) { "FAIL: no CTR ack"; $failed++ }
+            if ($mode -eq 'cuphead' -and -not ($got -match '"type":"ack","id":"e-42","ok":true')) { "FAIL: no Cuphead ack"; $failed++ }
+            if ($mode -eq 'cuphead' -and -not ($got -match '"type":"ack","id":"e-stale","ok":false,"reason":"intento anterior"')) { "FAIL: old-attempt Cuphead command was not rejected"; $failed++ }
             if ($mode -eq 'normal' -and -not ($got -match '"type":"ack","id":"e-42","ok":false,"reason":"escudo activo"')) { "FAIL: no ack"; $failed++ }
         }
         finally {

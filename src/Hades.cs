@@ -128,6 +128,7 @@ namespace Cloud90.GameLink
             public bool Safe;
             // The streamer's pick for the effect (an enemy's name), or "".
             public string Arg = "";
+            public string Epoch = "";
             public DateTime Sent;
         }
 
@@ -139,6 +140,7 @@ namespace Cloud90.GameLink
         readonly System.Threading.Timer heartbeat;
         bool connected;
         bool disposed;
+        string context = "";
         [DllImport("kernel32.dll")] static extern ulong GetTickCount64();
 
         public Inbox(string path) { this.path = path; Write(); }
@@ -165,6 +167,7 @@ namespace Cloud90.GameLink
             lock (gate) {
                 if (disposed) return false;
                 if (session != null && (items.Count >= 20 || !Regex.IsMatch(item.Id ?? "", "^[A-Za-z0-9_-]{1,80}$") || items.Exists(delegate(Item i) { return i.Id == item.Id; }))) return false;
+                if (string.IsNullOrEmpty(item.Epoch)) item.Epoch = context;
                 items.Add(item); Write(); return true;
             }
         }
@@ -192,6 +195,7 @@ namespace Cloud90.GameLink
         }
 
         public void SetPaused(bool value) { lock (gate) { paused = value; if (value) items.Clear(); Write(); } }
+        public void SetContext(string epoch) { lock (gate) { context = epoch ?? ""; } }
 
         public static string LuaString(string s)
         {
@@ -242,7 +246,7 @@ namespace Cloud90.GameLink
             {
                 double remaining = 10000 - (DateTime.UtcNow - i.Sent).TotalMilliseconds;
                 if (remaining <= 0) continue;
-                effects.Add(new { id = i.Id, effect = i.Effect, ms = i.Ms, arg = i.Arg, expiresMs = now + (ulong)remaining });
+                effects.Add(new { id = i.Id, effect = i.Effect, ms = i.Ms, arg = i.Arg, safe = i.Safe, epoch = i.Epoch, expiresMs = now + (ulong)remaining });
             }
             string text = new JavaScriptSerializer().Serialize(new { session = session, heartbeatMs = now, paused = paused || !connected, effects = effects });
             try {

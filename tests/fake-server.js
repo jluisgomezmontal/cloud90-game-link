@@ -14,6 +14,7 @@ server.on('upgrade', (req, socket, head) => {
   }
   wss.handleUpgrade(req, socket, head, (ws) => {
     let sent = false;
+    let cupheadEpoch = '';
     ws.on('message', (data) => {
       const msg = JSON.parse(data.toString());
       console.log('GOT ' + JSON.stringify(msg));
@@ -26,12 +27,16 @@ server.on('upgrade', (req, socket, head) => {
       if (msg.type === 'state' && msg.inPlay && !sent) {
         sent = true;
         const ctr = process.env.FAKE_MODE === 'ctr';
-        const payload = Buffer.from(JSON.stringify({ type: 'effect', id: 'e-42', effect: ctr ? 'give_item' : process.env.FAKE_EFFECT || 'slow', ms: ctr ? 1 : 15000, by: 'Ana \u00f1\u{1F600}', safe: true, arg: ctr ? 'missile' : 'HeavyMelee' }));
+        const cuphead = process.env.FAKE_MODE === 'cuphead';
+        cupheadEpoch = msg.epoch || '';
+        const payload = Buffer.from(JSON.stringify({ type: 'effect', id: 'e-42', effect: cuphead ? 'heal' : ctr ? 'give_item' : process.env.FAKE_EFFECT || 'slow', ms: ctr || cuphead ? 1 : 15000, by: 'Ana \u00f1\u{1F600}', safe: true, arg: cuphead ? '' : ctr ? 'missile' : 'HeavyMelee', ...(cuphead ? {epoch:cupheadEpoch} : {}) }));
         const split = payload.indexOf(0xc3) + 1;
         ws.send(payload.subarray(0, split), { binary: false, fin: false });
         ws.send(payload.subarray(split), { binary: false, fin: true });
       }
-      if (msg.type === 'ack') setTimeout(() => process.exit(0), 200);
+      if (msg.type === 'ack' && process.env.FAKE_MODE === 'cuphead' && msg.id === 'e-42') {
+        setTimeout(() => ws.send(JSON.stringify({type:'effect',id:'e-stale',effect:'heal',ms:1,safe:true,arg:'',epoch:cupheadEpoch})), 100);
+      } else if (msg.type === 'ack') setTimeout(() => process.exit(0), 200);
     });
     ws.on('error', () => {});
     ws.on('close', () => { if (process.env.FAKE_MODE === 'oversize') setTimeout(() => process.exit(0), 100); });

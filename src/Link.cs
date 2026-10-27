@@ -15,7 +15,7 @@ namespace Cloud90.GameLink
 {
     internal sealed class Link
     {
-        public const string Version = "cloud90-game-link-1.2.0";
+        public const string Version = "cloud90-game-link-1.3.0";
         // "hades", "kof2002": the token and the hello are this game's.
         public readonly string Game;
         readonly string title;
@@ -38,6 +38,7 @@ namespace Cloud90.GameLink
         bool paused;
         bool inPlay;
         bool welcomed;  // this connection got Cloud90's "welcome"
+        string gameContext = "";
 
         public event Action<string> Status;  // for the window
 
@@ -55,6 +56,14 @@ namespace Cloud90.GameLink
         {
             if (inbox != null && !ReferenceEquals(inbox, value)) inbox.Dispose();
             inbox = value; inbox.SetPaused(paused); inbox.Connected(welcomed);
+            if (Game == "cuphead") inbox.SetContext(gameContext);
+        }
+        public void SetContext(string epoch)
+        {
+            if (Game != "cuphead" || epoch == gameContext) return;
+            gameContext = epoch ?? "";
+            if (inbox != null) inbox.SetContext(gameContext);
+            Fire(SendState());
         }
 
         public void Start()
@@ -252,6 +261,7 @@ namespace Cloud90.GameLink
                 string effect = Str(msg, "effect");
                 string reason = null;
                 if (!EffectName.IsMatch(effect)) reason = "efecto desconocido";
+                else if (Game == "cuphead" && (string.IsNullOrEmpty(gameContext) || Str(msg, "epoch") != gameContext)) reason = "intento anterior";
                 else if (paused) reason = "en pausa";
                 else if (inbox == null || !inPlay) reason = "no disponible ahora";
                 if (reason != null)
@@ -264,6 +274,7 @@ namespace Cloud90.GameLink
                 Inbox.Item item = new Inbox.Item();
                 item.Id = id;
                 item.Effect = effect;
+                if (Game == "cuphead") item.Epoch = Str(msg, "epoch");
                 item.Ms = Math.Max(0, Math.Min(ms, 120000));
                 item.By = Str(msg, "by");
                 item.Safe = msg.ContainsKey("safe") && msg["safe"] is bool && (bool)msg["safe"];
@@ -290,7 +301,7 @@ namespace Cloud90.GameLink
                 if (space <= 0) return;
                 string id = rest.Substring(0, space);
                 string result = rest.Substring(space + 1).Trim();
-                if (inbox != null && inbox.Take(id) == null && Game == "ctrnf") return;
+                if (inbox != null && inbox.Take(id) == null && (Game == "ctrnf" || Game == "cuphead")) return;
                 bool ok = result == "ok";
                 Log.Write(title + ": efecto " + id + ": " + result);
                 Fire(Ack(id, ok, ok ? null : result));
@@ -337,7 +348,9 @@ namespace Cloud90.GameLink
 
         Task SendState()
         {
-            return Send(new Dictionary<string, object> { { "type", "state" }, { "paused", paused }, { "inPlay", inPlay } });
+            var message = new Dictionary<string, object> { { "type", "state" }, { "paused", paused }, { "inPlay", inPlay } };
+            if (Game == "cuphead") message["epoch"] = gameContext;
+            return Send(message);
         }
 
         readonly SemaphoreSlim sendLock = new SemaphoreSlim(1, 1);
