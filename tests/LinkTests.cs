@@ -11,6 +11,17 @@ namespace Cloud90.GameLink
     public static class LinkTests
     {
         static int failures;
+        static string ReadShared(string path)
+        {
+            for (int attempt = 0; ; attempt++)
+            {
+                try {
+                    using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                    using (var reader = new StreamReader(stream, Encoding.UTF8)) return reader.ReadToEnd();
+                }
+                catch (IOException) { if (attempt >= 20) throw; Thread.Sleep(10); }
+            }
+        }
 
         static void Check(bool ok, string what)
         {
@@ -26,9 +37,9 @@ namespace Cloud90.GameLink
                         System.Windows.Forms.TabControl tabs = null;
                         foreach (System.Windows.Forms.Control control in form.Controls)
                             if (control is System.Windows.Forms.TabControl) tabs = (System.Windows.Forms.TabControl)control;
-                        Check(tabs != null && tabs.TabCount == 4, "main window constructs all four game tabs");
-                        if (tabs != null && tabs.TabCount == 4) {
-                            string[] expected = { "Hades", "KOF 2002 (MAME)", "Metal Slug 3 (MAME)", "CTR Nitro-Fueled" };
+                        Check(tabs != null && tabs.TabCount == 5, "main window constructs all five game tabs");
+                        if (tabs != null && tabs.TabCount == 5) {
+                            string[] expected = { "Hades", "KOF 2002 (MAME)", "Metal Slug 3 (MAME)", "CTR Nitro-Fueled", "Cuphead" };
                             for (int i = 0; i < expected.Length; i++) Check(tabs.TabPages[i].Text == expected[i], "startup tab: " + expected[i]);
                         }
                     }
@@ -253,29 +264,38 @@ namespace Cloud90.GameLink
         // Against tests/fake-server.js: connects, says hello, gets an effect
         // into the inbox, and answers it as the mod would.
         public static int CtrProtocol(string server, string inboxPath)
+        { return JsonProtocol(server, inboxPath, "ctrnf"); }
+        public static int CupheadProtocol(string server, string inboxPath)
+        { return JsonProtocol(server, inboxPath, "cuphead"); }
+        static int JsonProtocol(string server, string inboxPath, string game)
         {
             int before = failures;
             Settings s = new Settings();
             s.Server = server;
-            s.Tokens["ctrnf"] = "c90gl_test";
-            Link link = new Link(delegate { return s; }, "ctrnf", "CTR Nitro-Fueled");
+            s.Tokens[game] = "c90gl_test";
+            Link link = new Link(delegate { return s; }, game, game);
             using (Inbox inbox = new Inbox(inboxPath, "protocol-session")) {
+                inbox.SetContext("attempt-1");
                 link.UseInbox(inbox);
+                if (game == "cuphead") { link.SetContext("attempt-1"); link.SetCapabilities(new[] { "heal", "ice_floor" }); }
                 link.Start();
                 Thread.Sleep(1500);
                 link.OnModLine("state 1");
                 DateTime limit = DateTime.UtcNow + TimeSpan.FromSeconds(10);
                 string text = "";
                 while (DateTime.UtcNow < limit) {
-                    text = File.ReadAllText(inboxPath, Encoding.UTF8);
+                    text = ReadShared(inboxPath);
                     if (text.Contains("e-42")) break;
                     Thread.Sleep(50);
                 }
-                Check(text.Contains("give_item") && text.Contains("missile"), "CTR WebSocket command reaches JSON inbox");
+                Check(game == "cuphead" ? text.Contains("heal") && text.Contains("\"safe\":true") && text.Contains("attempt-1") : text.Contains("give_item") && text.Contains("missile"), game + " WebSocket command reaches JSON inbox with the expected safety fields");
                 Check(text.Contains("protocol-session") && text.Contains("expiresMs"), "CTR command has its session and expiry");
+                if (game == "cuphead") Check(text.Contains("\"noDeath\":false") && text.Contains("\"allowDestructive\":true"), "Cuphead welcome and per-command permissions reach the native bridge");
                 link.OnModLine("ack e-42 ok");
+                if (game == "cuphead") link.SetContext("attempt-2");
                 Thread.Sleep(500);
-                Check(!File.ReadAllText(inboxPath).Contains("e-42"), "CTR native acknowledgement clears the command");
+                Check(!ReadShared(inboxPath).Contains("e-42"), game + " native acknowledgement clears the command");
+                if (game == "cuphead") Check(ReadShared(inboxPath).Contains("\"noDeath\":true") && ReadShared(inboxPath).Contains("\"allowDestructive\":false"), "Cuphead permission revocation reaches a running bridge");
                 link.Stop();
             }
             return failures - before;

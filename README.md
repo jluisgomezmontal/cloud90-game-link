@@ -6,6 +6,7 @@ One small Windows app for every PC game Cloud90 supports, a tab per game:
 
 | Game | How | Needs |
 |---|---|---|
+| **Cuphead + The Delicious Last Course** | BepInEx plugin with a local session, heartbeat and per-attempt commands. Health, movement and control effects in solo levels. | Cuphead on Steam, Windows x64 build 20241530; DLC optional and separately owned. See [build and validation notes](mod/cuphead/README.md). |
 | **CTR Nitro-Fueled** | Side-by-side native offline bridge; Wumpa, weapons, turbo and timed controls. JSON inbox and native acknowledgements. | OCTR v0.6.4 portable, the separately installed [CTR Cloud90 module](https://github.com/jluisgomezmontal/ctr-cloud90/blob/feat/cloud90-game-link/CLOUD90.md), and the exact supported CUSA13795 1.21 image |
 | **Hades** | `mod/Cloud90.lua`, a mod for the game's own Lua (one `Import` line at the end of `RoomManager.lua`, with a backup). It reads `Content/Scripts/Cloud90Inbox.lua` with `loadfile` and answers on the game's console. | Hades on Steam (Windows) |
 | **The King of Fighters 2002** | `mame/plugins/cloud90`, a MAME plugin. It reads `inbox.lua` and answers in `acks.txt` (in `%LOCALAPPDATA%\Cloud90GameLink\mame\kof2002`). Only during a round of a game you started, vs the CPU. | [MAME](https://www.mamedev.org) and your own `kof2002.zip` + `neogeo.zip` |
@@ -40,6 +41,10 @@ powershell -ExecutionPolicy Bypass -File build.ps1 [-SigningKey key.xml]
 
 Uses the C# compiler that comes with Windows (.NET Framework 4.x). Output:
 `dist\Cloud90GameLink.exe` (+ `.sig` with a signing key).
+
+A complete Cuphead release additionally requires the game references and pinned
+BepInEx/Newtonsoft packages; use the [Cuphead build command](mod/cuphead/README.md#build-the-complete-client).
+The default build cannot install Cuphead's plugin and is for CI/other games.
 
 ## Tests
 

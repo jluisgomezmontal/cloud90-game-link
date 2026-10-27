@@ -290,6 +290,7 @@ namespace Cloud90.GameLink
                 new GamePanel(this, new MameHost("kof2002", "neogeo", "KOF 2002")),
                 new GamePanel(this, new MameHost("mslug3", "neogeo", "Metal Slug 3")),
                 new GamePanel(this, new CtrHost()),
+                new GamePanel(this, new CupheadHost()),
             };
             for (int i = 0; i < panels.Length; i++)
             {

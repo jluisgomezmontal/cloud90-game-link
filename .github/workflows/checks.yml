@@ -18,7 +18,12 @@ jobs:
       - run: npm ci
       - run: npm audit --audit-level high
       - run: npm test
-      - run: npm run test:protocol
+      - name: Cuphead JSON test dependency
+        shell: powershell
+        run: |
+          Invoke-WebRequest 'https://api.nuget.org/v3-flatcontainer/newtonsoft.json/13.0.3/newtonsoft.json.13.0.3.nupkg' -OutFile "$env:RUNNER_TEMP\json.zip"
+          Expand-Archive "$env:RUNNER_TEMP\json.zip" "$env:RUNNER_TEMP\json"
+      - run: npm run test:protocol -- -JsonDll "${{ runner.temp }}\json\lib\net20\Newtonsoft.Json.dll"
       - name: Build Windows app
         shell: powershell
         run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File build.ps1
