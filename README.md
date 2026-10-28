@@ -1,11 +1,14 @@
 # Cloud90 Game Link
 
-Lets a live stream on [Cloud90](https://cloud90.live) change PC games: viewers'
+Lets a live stream on [Cloud90](https://cloud90.dev) change PC games: viewers'
 gifts heal you, spawn enemies, invert your controls, fill your power gauge…
-One small Windows app for every PC game Cloud90 supports, a tab per game:
+One small Windows app for every PC game Cloud90 supports, with an illustrated
+library, the Cloud90 Live brand, visible setup guides, connection/install state
+and a collapsible activity log:
 
 | Game | How | Needs |
 |---|---|---|
+| **GTA San Andreas** | Native ASI bridge with 25 effects and two server-side roulettes: health, armour, money, wanted level, car repairs, control/physics trolls, fog/camera effects and bounded enemy/pursuer/obstacle appearances. | Classic Windows x86 1.0 US executable with the exact supported hash; single player. See [GTA setup and limits](mod/gtasa/README.md). |
 | **Cuphead + The Delicious Last Course** | BepInEx plugin with a local session, heartbeat and per-attempt commands. Health, movement and control effects in solo levels. | Cuphead on Steam, Windows x64 build 20241530; DLC optional and separately owned. See [build and validation notes](mod/cuphead/README.md). |
 | **CTR Nitro-Fueled** | Side-by-side native offline bridge; Wumpa, weapons, turbo and timed controls. JSON inbox and native acknowledgements. | OCTR v0.6.4 portable, the separately installed [CTR Cloud90 module](https://github.com/jluisgomezmontal/ctr-cloud90/blob/main/CLOUD90.md), and the exact supported CUSA13795 1.21 image |
 | **Hades** | `mod/Cloud90.lua`, a mod for the game's own Lua (one `Import` line at the end of `RoomManager.lua`, with a backup). It reads `Content/Scripts/Cloud90Inbox.lua` with `loadfile` and answers on the game's console. | Hades on Steam (Windows) |
@@ -18,6 +21,9 @@ game side, and opens the game itself so it can read the game's answers.
 `Pausar efectos` is the panic button. Log: `%LOCALAPPDATA%\Cloud90GameLink\link.log`.
 
 Nothing of any game is included or distributed: no game files, no ROMs, no BIOS.
+Game cover art is reused from the existing Cloud90 frontend. GTA's game files
+and saved games are not distributed or patched. Third-party loader/library
+notices are included with the native module and the release.
 
 CTR basic effects support the older module. The new gravity, squash, fall and chaos effects require Game Link 1.3.1 and CTR bridge 2. CTR requires Game Link 1.2.2 or later and the updated module with `launcherBridgeVersion=1`.
 Install its module with CTR and its client closed, select the portable folder

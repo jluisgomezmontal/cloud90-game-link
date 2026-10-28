@@ -18,6 +18,8 @@ namespace Cloud90.GameLink
     // What a tab needs from its game.
     internal abstract class GameHost
     {
+        public event Action<string> Status;
+        protected void ReportStatus(string text) { var handler = Status; if (handler != null) handler(text); }
         public abstract string Id { get; }
         public abstract string Title { get; }
         public abstract string FolderButton { get; }
@@ -112,32 +114,110 @@ namespace Cloud90.GameLink
         readonly Button pauseButton = new Button();
         readonly Button folderButton = new Button();
         readonly Button uninstallButton = new Button();
+        readonly Label folderPath = new Label();
+        readonly Label connectionHint = new Label();
+        readonly ToolTip details = new ToolTip();
 
         public string TabTitle { get { return host.Title + (host is MameHost ? " (MAME)" : ""); } }
+        public string GameId { get { return host.Id; } }
 
         public GamePanel(MainForm form, GameHost host)
         {
             this.form = form;
             this.host = host;
-            BackColor = Color.FromArgb(18, 18, 26);
+            BackColor = Design.Background;
+            AutoScroll = true;
             link = new Link(delegate { return form.Settings; }, host.Id, host.Title);
-            link.Status += delegate (string text) { form.OnUi(delegate { cloudStatus.Text = "Cloud90: " + text; }); };
+            host.Status += delegate(string text) { form.OnUi(delegate { gameStatus.Text = text; gameStatus.ForeColor = Design.Muted; }); };
+            link.Status += delegate (string text) { form.OnUi(delegate {
+                cloudStatus.Text = text;
+                pauseButton.Text = link.Paused ? "Reanudar efectos" : "Pausar efectos";
+                pauseButton.AccessibleName = pauseButton.Text;
+                pauseButton.BackColor = link.Paused ? Color.FromArgb(68, 35, 60) : Design.Raised;
+                pauseButton.FlatAppearance.BorderColor = link.Paused ? Design.Pink : Design.Border;
+            }); };
 
-            cloudStatus.SetBounds(8, 8, 520, 22);
-            gameStatus.SetBounds(8, 32, 520, 36);
-            MainForm.Style(tokenButton, "Pegar token", 8, 72);
-            MainForm.Style(playButton, "Abrir " + host.Title, 138, 72);
-            MainForm.Style(pauseButton, "Pausar efectos", 268, 72);
-            MainForm.Style(folderButton, host.FolderButton, 398, 72);
-            MainForm.Style(uninstallButton, "Desinstalar", 398, 108);
-            Controls.AddRange(new Control[] { cloudStatus, gameStatus, tokenButton, playButton, pauseButton, folderButton, uninstallButton });
+            var layout = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 1, RowCount = 5, Padding = new Padding(24, 0, 24, 20), BackColor = Design.Background };
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 218));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 172));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 110));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 110));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));
+            Controls.Add(layout);
+
+            var banner = new GameBanner(host.Id) { Size = new Size(828, 200), Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 18) };
+            Label edition = Design.Label(host is MameHost ? "Arcade / MAME" : "PC / Windows", 10, Color.FromArgb(196, 167, 255));
+            edition.SetBounds(24, 28, 200, 24);
+            Label heading = Design.Label(host.Title, 27, Design.Text);
+            heading.Font = new Font("Segoe UI Semibold", 27);
+            heading.SetBounds(22, 64, 610, 54); heading.Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right;
+            Label description = Design.Label(Design.Description(host.Id), 11, Design.Muted);
+            description.SetBounds(24, 128, 510, 50); description.Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right;
+            var instructions = new Button(); Design.Button(instructions, "Cómo &conectar y jugar\r\nVer requisitos, conexión del token y pasos de este juego", false);
+            instructions.Dock = DockStyle.Fill;
+            instructions.Margin = new Padding(0, 8, 0, 4);
+            instructions.Padding = new Padding(16, 8, 16, 8);
+            instructions.TextAlign = ContentAlignment.MiddleLeft;
+            instructions.BackColor = Color.FromArgb(14, 40, 49);
+            instructions.ForeColor = Color.FromArgb(165, 243, 252);
+            instructions.FlatAppearance.BorderColor = Design.Cyan;
+            instructions.FlatAppearance.MouseOverBackColor = Color.FromArgb(18, 57, 68);
+            instructions.FlatAppearance.MouseDownBackColor = Color.FromArgb(22, 70, 83);
+            instructions.AccessibleName = "Cómo conectar y jugar: instrucciones de " + host.Title;
+            instructions.AccessibleDescription = "Abre la guía de requisitos, token, inicio de partida y efectos de este juego.";
+            instructions.Click += delegate { using (var guide = new GameInstructions(host.Id, host.Title)) { guide.Icon = form.Icon; guide.ShowDialog(form); } };
+            banner.Controls.AddRange(new Control[] { edition, heading, description });
+            layout.Controls.Add(banner, 0, 0);
+
+            var actions = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 3, Margin = Padding.Empty };
+            actions.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60)); actions.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40));
+            actions.RowStyles.Add(new RowStyle(SizeType.Absolute, 48)); actions.RowStyles.Add(new RowStyle(SizeType.Absolute, 78)); actions.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            Design.Button(playButton, "Abrir juego", true); Design.Button(pauseButton, "Pausar efectos", false);
+            playButton.Dock = DockStyle.Fill; playButton.Margin = new Padding(0, 0, 8, 4);
+            pauseButton.Dock = DockStyle.Fill; pauseButton.Margin = new Padding(8, 0, 0, 4);
+            Label playNote = Design.Label(Design.PlayNote(host.Id), 9, Design.Muted); playNote.Dock = DockStyle.Fill; playNote.Margin = new Padding(0, 7, 0, 0);
+            actions.Controls.Add(playButton, 0, 0); actions.Controls.Add(pauseButton, 1, 0);
+            actions.Controls.Add(instructions, 0, 1); actions.SetColumnSpan(instructions, 2);
+            actions.Controls.Add(playNote, 0, 2); actions.SetColumnSpan(playNote, 2);
+            layout.Controls.Add(actions, 0, 1);
+
+            var connection = new TableLayoutPanel { Dock = DockStyle.Fill, BackColor = Design.Surface, Padding = new Padding(16, 12, 16, 10), ColumnCount = 2, RowCount = 3, Margin = new Padding(0, 0, 0, 12) };
+            connection.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); connection.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 145));
+            connection.RowStyles.Add(new RowStyle(SizeType.Absolute, 23)); connection.RowStyles.Add(new RowStyle(SizeType.Absolute, 24)); connection.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            Label connectionTitle = Design.Label("Conexión con Cloud90", 10, Design.Text); connectionTitle.Dock = DockStyle.Fill;
+            cloudStatus.ForeColor = Design.Cyan; cloudStatus.AutoEllipsis = true; cloudStatus.Dock = DockStyle.Fill;
+            connectionHint.ForeColor = Design.Muted; connectionHint.AutoEllipsis = true; connectionHint.Dock = DockStyle.Fill; connectionHint.Font = new Font("Segoe UI", 9);
+            connectionHint.Text = "Genera tu token en Cloud90 › Juegos › " + host.Title + ".";
+            Design.Button(tokenButton, "Pegar token", false); tokenButton.Dock = DockStyle.Fill; tokenButton.Margin = new Padding(8, 8, 0, 8);
+            connection.Controls.Add(connectionTitle, 0, 0); connection.Controls.Add(cloudStatus, 0, 1); connection.Controls.Add(connectionHint, 0, 2); connection.Controls.Add(tokenButton, 1, 0); connection.SetRowSpan(tokenButton, 3);
+            layout.Controls.Add(connection, 0, 2);
+
+            var installation = new TableLayoutPanel { Dock = DockStyle.Fill, BackColor = Design.Surface, Padding = new Padding(16, 12, 16, 10), ColumnCount = 2, RowCount = 3, Margin = new Padding(0, 0, 0, 12) };
+            installation.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); installation.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 145));
+            installation.RowStyles.Add(new RowStyle(SizeType.Absolute, 23)); installation.RowStyles.Add(new RowStyle(SizeType.Absolute, 24)); installation.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            Label installationTitle = Design.Label("Instalación del juego", 10, Design.Text); installationTitle.Dock = DockStyle.Fill;
+            gameStatus.Dock = DockStyle.Fill; gameStatus.AutoEllipsis = true; gameStatus.ForeColor = Design.Muted;
+            folderPath.Dock = DockStyle.Fill; folderPath.AutoEllipsis = true; folderPath.ForeColor = Design.Muted; folderPath.Font = new Font("Segoe UI", 9);
+            Design.Button(folderButton, "Elegir carpeta", false); folderButton.Dock = DockStyle.Fill; folderButton.Margin = new Padding(8, 8, 0, 8);
+            installation.Controls.Add(installationTitle, 0, 0); installation.Controls.Add(gameStatus, 0, 1); installation.Controls.Add(folderPath, 0, 2); installation.Controls.Add(folderButton, 1, 0); installation.SetRowSpan(folderButton, 3);
+            gameStatus.TextChanged += delegate { details.SetToolTip(gameStatus, gameStatus.Text); };
+            folderPath.TextChanged += delegate { details.SetToolTip(folderPath, folderPath.Text); };
+            details.SetToolTip(pauseButton, "Detiene los efectos de este juego. Puedes reanudarlos cuando quieras.");
+            details.SetToolTip(uninstallButton, "Quita la integración de Cloud90; conserva el juego y tus partidas.");
+            layout.Controls.Add(installation, 0, 3);
+
+            var options = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Margin = Padding.Empty };
+            Design.Button(uninstallButton, "Quitar integración…", false); uninstallButton.Width = 180;
+            uninstallButton.FlatAppearance.BorderSize = 0; uninstallButton.BackColor = Design.Background; uninstallButton.ForeColor = Design.Muted;
+            options.Controls.Add(uninstallButton); layout.Controls.Add(options, 0, 4);
             if (host is HadesHost)
             {
                 CheckBox vulkan = new CheckBox();
                 vulkan.Text = "Usar Vulkan";
-                vulkan.SetBounds(8, 112, 140, 22);
+                vulkan.AutoSize = true; vulkan.Margin = new Padding(16, 12, 0, 0);
                 vulkan.CheckedChanged += delegate { ((HadesHost)host).Vulkan = vulkan.Checked; };
-                Controls.Add(vulkan);
+                options.Controls.Add(vulkan);
             }
 
             tokenButton.Click += delegate { PasteToken(); };
@@ -147,12 +227,14 @@ namespace Cloud90.GameLink
             uninstallButton.Click += delegate { Uninstall(); };
         }
 
+        protected override void Dispose(bool disposing) { if (disposing) details.Dispose(); base.Dispose(disposing); }
+
         public void Startup()
         {
             host.FindFolder(form.Settings);
             form.Settings.Save();
             Prepare();
-            cloudStatus.Text = "Cloud90: " + (form.Settings.TokenFor(host.Id).Length > 0 ? "conectando…" : "sin token");
+            cloudStatus.Text = form.Settings.TokenFor(host.Id).Length > 0 ? "Conectando…" : "Falta conectar tu cuenta";
             link.Start();
         }
 
@@ -160,22 +242,26 @@ namespace Cloud90.GameLink
 
         void Prepare()
         {
+            folderPath.Text = host.Folder(form.Settings);
             string problem = host.Problem(form.Settings);
             if (problem.Length > 0)
             {
-                gameStatus.Text = host.Title + ": " + problem;
+                gameStatus.Text = problem;
+                gameStatus.ForeColor = Color.FromArgb(251, 191, 36);
                 playButton.Enabled = false;
                 return;
             }
             try
             {
                 link.UseInbox(host.Prepare(form.Settings));
-                gameStatus.Text = host.Title + ": listo (" + host.Folder(form.Settings) + ")";
+                gameStatus.Text = "Integración lista";
+                gameStatus.ForeColor = Design.Success;
                 playButton.Enabled = !host.Running;
             }
             catch (Exception e)
             {
-                gameStatus.Text = host.Title + ": no se pudo preparar (" + e.Message + ")";
+                gameStatus.Text = "No se pudo preparar: " + e.Message;
+                gameStatus.ForeColor = Color.FromArgb(248, 113, 113);
                 playButton.Enabled = false;
             }
         }
@@ -190,6 +276,7 @@ namespace Cloud90.GameLink
             }
             form.Settings.Tokens[host.Id] = text;
             form.Settings.Save();
+            connectionHint.Text = "Token guardado. Puedes sustituirlo con Pegar token.";
             Log.Write(host.Title + ": token guardado");
             link.Start();
         }
@@ -209,10 +296,12 @@ namespace Cloud90.GameLink
                 host.Start(form.Settings, link, delegate
                 {
                     link.OnGameExited();
-                    form.OnUi(delegate { gameStatus.Text = host.Title + ": cerrado"; playButton.Enabled = true; });
+                    form.OnUi(delegate { gameStatus.Text = "Juego cerrado. Puedes abrirlo de nuevo."; playButton.Text = "Abrir juego"; playButton.Enabled = true; folderButton.Enabled = true; });
                 });
-                gameStatus.Text = host.Title + ": abierto";
+                gameStatus.Text = "Juego abierto desde Game Link";
+                playButton.Text = "Juego abierto";
                 playButton.Enabled = false;
+                folderButton.Enabled = false;
             }
             catch (Exception e)
             {
@@ -262,28 +351,73 @@ namespace Cloud90.GameLink
     {
         public Settings Settings = Settings.Load();
         readonly SynchronizationContext ui;
-        readonly TabControl tabs = new TabControl();
+        readonly Panel workspace = new Panel();
+        readonly Panel activity = new Panel();
+        readonly Button activityToggle = new Button();
         readonly TextBox log = new TextBox();
         readonly GamePanel[] panels;
+        readonly GameNavigationButton[] navigation;
+        bool loaded;
 
         public MainForm()
         {
             ui = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
             Text = "Cloud90 Game Link";
-            ClientSize = new Size(580, 470);
-            MinimumSize = new Size(520, 420);
+            ClientSize = new Size(1120, 800);
+            MinimumSize = new Size(980, 740);
+            StartPosition = FormStartPosition.CenterScreen;
+            AutoScaleDimensions = new SizeF(96, 96);
+            AutoScaleMode = AutoScaleMode.Dpi;
             Font = new Font("Segoe UI", 9.5f);
-            BackColor = Color.FromArgb(18, 18, 26);
-            ForeColor = Color.Gainsboro;
+            BackColor = Design.Background;
+            ForeColor = Design.Text;
+            using (Stream icon = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("Art.cloud90.ico"))
+                if (icon != null) Icon = new Icon(icon);
 
-            Label title = new Label();
-            title.Text = "Cloud90 Game Link";
-            title.Font = new Font("Segoe UI Semibold", 14f);
-            title.ForeColor = Color.White;
-            title.SetBounds(16, 10, 540, 30);
+            var shell = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 2, Margin = Padding.Empty, Padding = Padding.Empty };
+            shell.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 244)); shell.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            shell.RowStyles.Add(new RowStyle(SizeType.Absolute, 88)); shell.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            Controls.Add(shell);
 
-            tabs.SetBounds(16, 44, 548, 180);
-            tabs.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            var header = new Panel { Size = new Size(1120, 88), Dock = DockStyle.Fill, Margin = Padding.Empty, BackColor = Design.Background };
+            var logo = new PictureBox { Image = Design.Art("cloud90.png"), SizeMode = PictureBoxSizeMode.Zoom, BackColor = Design.Background };
+            logo.SetBounds(24, 19, 46, 46); logo.AccessibleName = "Cloud90 Live";
+            Label brand = Design.Label("Cloud90 Live", 15, Design.Text); brand.Font = new Font("Segoe UI Semibold", 15); brand.SetBounds(82, 18, 165, 28);
+            Label product = Design.Label("Game Link", 10, Design.Muted); product.SetBounds(83, 47, 150, 24);
+            Label purpose = Design.Label("Conecta tu chat con tus juegos", 11, Design.Muted); purpose.SetBounds(268, 32, 400, 26);
+            var dashboard = new Button(); Design.Button(dashboard, "Abrir Cloud90", false); dashboard.SetBounds(922, 24, 172, 40); dashboard.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            dashboard.Click += delegate { try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("https://cloud90.dev/juegos") { UseShellExecute = true }); } catch (Exception e) { MessageBox.Show(this, "No se pudo abrir Cloud90: " + e.Message, Text); } };
+            header.Controls.AddRange(new Control[] { logo, brand, product, purpose, dashboard });
+            shell.Controls.Add(header, 0, 0); shell.SetColumnSpan(header, 2);
+
+            var sidebar = new Panel { Dock = DockStyle.Fill, BackColor = Design.Surface, Margin = new Padding(0, 0, 0, 0), Padding = new Padding(12, 14, 12, 12) };
+            Label libraryTitle = Design.Label("Tu biblioteca", 12, Design.Text); libraryTitle.Font = new Font("Segoe UI Semibold", 12); libraryTitle.Dock = DockStyle.Top; libraryTitle.Height = 36;
+            var library = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = true, Padding = Padding.Empty };
+            var footer = new Panel { Dock = DockStyle.Bottom, Height = 75 };
+            Label help = Design.Label("Cada juego usa su propio token.\nConfigura los regalos en Cloud90.", 9, Design.Muted); help.Dock = DockStyle.Top; help.Height = 44;
+            Label version = Design.Label("Game Link " + Link.Version.Replace("cloud90-game-link-", ""), 9, Design.Muted); version.Dock = DockStyle.Bottom; version.Height = 22;
+            footer.Controls.AddRange(new Control[] { help, version });
+            sidebar.Controls.Add(library); sidebar.Controls.Add(libraryTitle); sidebar.Controls.Add(footer);
+            shell.Controls.Add(sidebar, 0, 1);
+
+            var right = new Panel { Dock = DockStyle.Fill, Margin = Padding.Empty, Padding = Padding.Empty };
+            workspace.Dock = DockStyle.Fill; workspace.BackColor = Design.Background;
+            activity.Dock = DockStyle.Bottom; activity.Height = 48; activity.BackColor = Design.Surface; activity.Padding = new Padding(24, 0, 24, 0);
+            var activityHeader = new Panel { Size = new Size(828, 44), Dock = DockStyle.Top, Height = 44 };
+            Label activityLabel = Design.Label("Actividad de Game Link", 10, Design.Muted); activityLabel.SetBounds(0, 12, 300, 24);
+            Design.Button(activityToggle, "Mostrar registro", false); activityToggle.SetBounds(660, 5, 168, 34); activityToggle.Anchor = AnchorStyles.Top | AnchorStyles.Right; activityToggle.FlatAppearance.BorderSize = 0; activityToggle.BackColor = Design.Surface;
+            activityToggle.Click += delegate {
+                log.Visible = !log.Visible;
+                activity.Height = log.Visible ? 180 : 48;
+                activityToggle.Text = log.Visible ? "Ocultar registro" : "Mostrar registro";
+                activityToggle.AccessibleName = activityToggle.Text;
+            };
+            activityHeader.Controls.AddRange(new Control[] { activityLabel, activityToggle });
+            log.Multiline = true; log.ReadOnly = true; log.ScrollBars = ScrollBars.Vertical; log.WordWrap = false;
+            log.BackColor = Design.Surface; log.ForeColor = Design.Muted; log.BorderStyle = BorderStyle.None; log.Font = new Font("Consolas", 9f);
+            log.Dock = DockStyle.Fill; log.Visible = false; log.AccessibleName = "Registro de conexiones y efectos";
+            activity.Controls.Add(log); activity.Controls.Add(activityHeader);
+            right.Controls.Add(workspace); right.Controls.Add(activity); shell.Controls.Add(right, 1, 1);
             panels = new GamePanel[]
             {
                 new GamePanel(this, new HadesHost()),
@@ -291,48 +425,54 @@ namespace Cloud90.GameLink
                 new GamePanel(this, new MameHost("mslug3", "neogeo", "Metal Slug 3")),
                 new GamePanel(this, new CtrHost()),
                 new GamePanel(this, new CupheadHost()),
+                new GamePanel(this, new GtaSaHost()),
             };
+            navigation = new GameNavigationButton[panels.Length];
             for (int i = 0; i < panels.Length; i++)
             {
-                TabPage page = new TabPage(panels[i].TabTitle);
-                page.BackColor = Color.FromArgb(18, 18, 26);
+                int index = i;
                 panels[i].Dock = DockStyle.Fill;
-                page.Controls.Add(panels[i]);
-                tabs.TabPages.Add(page);
+                panels[i].Visible = false;
+                workspace.Controls.Add(panels[i]);
+                navigation[i] = new GameNavigationButton(panels[i].GameId, panels[i].GameId == "kof2002" ? "KOF 2002" : panels[i].GameId == "ctrnf" ? "CTR Nitro-Fueled" : panels[i].TabTitle, panels[i].TabTitle.Contains("MAME") ? "Arcade / MAME" : "PC / Windows") { Width = 216, Height = 78, Margin = new Padding(0, 0, 0, 6) };
+                navigation[i].Click += delegate { SelectGame(index); };
+                navigation[i].KeyDown += delegate(object sender, KeyEventArgs e) {
+                    if (e.KeyCode != Keys.Up && e.KeyCode != Keys.Down) return;
+                    int next = (index + (e.KeyCode == Keys.Down ? 1 : panels.Length - 1)) % panels.Length;
+                    SelectGame(next); navigation[next].Focus(); e.Handled = true;
+                };
+                library.Controls.Add(navigation[i]);
             }
-
-            log.Multiline = true;
-            log.ReadOnly = true;
-            log.ScrollBars = ScrollBars.Vertical;
-            log.BackColor = Color.FromArgb(10, 10, 16);
-            log.ForeColor = Color.Silver;
-            log.BorderStyle = BorderStyle.None;
-            log.Font = new Font("Consolas", 9f);
-            log.SetBounds(16, 232, 548, 226);
-            log.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-
-            Controls.AddRange(new Control[] { title, tabs, log });
+            int selected = Array.FindIndex(panels, delegate(GamePanel p) { return p.GameId == Settings.SelectedGame; });
+            SelectGame(selected < 0 ? panels.Length - 1 : selected);
             Log.Line += delegate (string line) { OnUi(delegate { AppendLog(line); }); };
             Load += delegate
             {
                 Log.Reset();
                 Log.Write("Cloud90 Game Link " + Link.Version);
                 foreach (GamePanel p in panels) p.Startup();
+                loaded = true;
             };
             FormClosed += delegate { foreach (GamePanel p in panels) p.Stop(); };
         }
 
-        public static void Style(Button b, string text, int x, int y)
+        void SelectGame(int index)
         {
-            b.Text = text;
-            b.SetBounds(x, y, 124, 30);
-            b.FlatStyle = FlatStyle.Flat;
-            b.FlatAppearance.BorderColor = Color.FromArgb(60, 60, 80);
-            b.BackColor = Color.FromArgb(30, 30, 44);
-            b.ForeColor = Color.White;
+            SuspendLayout();
+            for (int i = 0; i < panels.Length; i++) { panels[i].Visible = i == index; navigation[i].Selected = i == index; }
+            panels[index].BringToFront();
+            ResumeLayout();
+            Settings.SelectedGame = panels[index].GameId;
+            if (loaded) Settings.Save();
         }
 
-        public void OnUi(Action action) { ui.Post(delegate { action(); }, null); }
+        public static void Style(Button b, string text, int x, int y)
+        {
+            Design.Button(b, text, false);
+            b.SetBounds(x, y, 124, 30);
+        }
+
+        public void OnUi(Action action) { ui.Post(delegate { if (!IsDisposed && !Disposing) action(); }, null); }
 
         void AppendLog(string line)
         {

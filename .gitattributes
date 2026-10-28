@@ -1,0 +1,3 @@
+# Preserve upstream license formatting without whitespace diagnostics.
+mod/gtasa/vendor/*LICENSE* whitespace=-blank-at-eol
+mod/gtasa/THIRD-PARTY-NOTICES.txt whitespace=-blank-at-eol

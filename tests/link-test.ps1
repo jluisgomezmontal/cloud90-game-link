@@ -75,7 +75,7 @@ try {
             $got = Get-Content -LiteralPath $log -Encoding UTF8
             $got | ForEach-Object { "  server: $_" }
             $helloGame = if ($mode -eq 'ctr') { 'ctrnf' } elseif ($mode -eq 'cuphead') { 'cuphead' } else { 'kof2002' }
-            if (-not ($got -match ('"type":"hello","game":"' + $helloGame + '","version":"cloud90-game-link-1.3.1"'))) { "FAIL: no hello"; $failed++ }
+            if (-not ($got -match ('"type":"hello","game":"' + $helloGame + '","version":"cloud90-game-link-1.4.0"'))) { "FAIL: no hello"; $failed++ }
             if ($mode -eq 'ctr' -and -not ($got -match '"type":"ack","id":"e-42","ok":true')) { "FAIL: no CTR ack"; $failed++ }
             if ($mode -eq 'cuphead' -and -not ($got -match '"type":"ack","id":"e-42","ok":true')) { "FAIL: no Cuphead ack"; $failed++ }
             if (($mode -eq 'cuphead' -or $mode -eq 'ctr') -and -not ($got -match '"type":"ack","id":"e-stale","ok":false,"reason":"intento anterior"')) { "FAIL: old-attempt Cuphead command was not rejected"; $failed++ }

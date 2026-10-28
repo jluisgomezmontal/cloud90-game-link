@@ -21,6 +21,8 @@ namespace Cloud90.GameLink
         public string MameDir = "";
         public string CtrDir = "";
         public string CupheadDir = "";
+        public string GtaSaDir = "";
+        public string SelectedGame = "gtasa";
         // game id ("hades", "kof2002") -> its token
         public readonly Dictionary<string, string> Tokens = new Dictionary<string, string>();
 
@@ -65,6 +67,8 @@ namespace Cloud90.GameLink
                 else if (key == "mame_dir") s.MameDir = value;
                 else if (key == "ctr_dir") s.CtrDir = value;
                 else if (key == "cuphead_dir") s.CupheadDir = value;
+                else if (key == "gtasa_dir") s.GtaSaDir = value;
+                else if (key == "selected_game") s.SelectedGame = value;
                 else if (key.StartsWith("token_protected."))
                 {
                     string token = Unseal(value, Entropy);
@@ -102,6 +106,8 @@ namespace Cloud90.GameLink
             if (MameDir.Length > 0) lines.Add("mame_dir=" + MameDir);
             if (CtrDir.Length > 0) lines.Add("ctr_dir=" + CtrDir);
             if (CupheadDir.Length > 0) lines.Add("cuphead_dir=" + CupheadDir);
+            if (GtaSaDir.Length > 0) lines.Add("gtasa_dir=" + GtaSaDir);
+            lines.Add("selected_game=" + SelectedGame);
             foreach (KeyValuePair<string, string> t in Tokens)
                 if (t.Value.Length > 0) lines.Add("token_protected." + t.Key + "=" + Seal(t.Value));
             File.WriteAllLines(FilePath, lines.ToArray(), new UTF8Encoding(false));

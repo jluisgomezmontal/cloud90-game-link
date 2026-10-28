@@ -34,14 +34,16 @@ namespace Cloud90.GameLink
             Thread thread = new Thread(delegate () {
                 try {
                     using (MainForm form = new MainForm()) {
-                        System.Windows.Forms.TabControl tabs = null;
-                        foreach (System.Windows.Forms.Control control in form.Controls)
-                            if (control is System.Windows.Forms.TabControl) tabs = (System.Windows.Forms.TabControl)control;
-                        Check(tabs != null && tabs.TabCount == 5, "main window constructs all five game tabs");
-                        if (tabs != null && tabs.TabCount == 5) {
-                            string[] expected = { "Hades", "KOF 2002 (MAME)", "Metal Slug 3 (MAME)", "CTR Nitro-Fueled", "Cuphead" };
-                            for (int i = 0; i < expected.Length; i++) Check(tabs.TabPages[i].Text == expected[i], "startup tab: " + expected[i]);
-                        }
+                        var games = new List<GamePanel>();
+                        Action<System.Windows.Forms.Control> visit = null;
+                        visit = delegate(System.Windows.Forms.Control control) {
+                            if (control is GamePanel) games.Add((GamePanel)control);
+                            foreach (System.Windows.Forms.Control child in control.Controls) visit(child);
+                        };
+                        visit(form);
+                        Check(games.Count == 6, "main window constructs all six library games");
+                        foreach (string id in new[] { "hades", "kof2002", "mslug3", "ctrnf", "cuphead", "gtasa" })
+                            Check(games.Exists(delegate(GamePanel game) { return game.GameId == id; }), "library game: " + id);
                     }
                 } catch (Exception error) { Check(false, "main window startup: " + error.GetType().Name); }
             });

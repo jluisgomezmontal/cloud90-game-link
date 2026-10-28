@@ -2,3 +2,14 @@ dist/
 node_modules/
 *.tmp
 mod/cuphead/dist/
+mod/gtasa/dist/
+mod/gtasa/*.obj
+mod/gtasa/*.lib
+mod/gtasa/*.exp
+mod/gtasa/vendor/minhook/.editorconfig
+mod/gtasa/vendor/minhook/.github/
+mod/gtasa/vendor/minhook/.gitignore
+mod/gtasa/vendor/minhook/CMakeLists.txt
+mod/gtasa/vendor/minhook/build/
+mod/gtasa/vendor/minhook/cmake/
+mod/gtasa/vendor/minhook/dll_resources/
