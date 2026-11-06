@@ -94,5 +94,5 @@ long-running streams and real production gifts remain owner validation.
 
 Runtime reference: https://github.com/mstan/SuperMarioWorldRecomp.
 Our bridge is independently implemented; no runtime/helper source is packaged.
-The card screenshot is cropped from the upstream snesrecomp documentation image
-`docs/assets/games/super-mario-world-wide.png`, also used by the desktop library.
+The card and desktop library use the same owner-selected Mario and Yoshi artwork:
+https://cdn.wallpapersafari.com/20/39/kaFhzl.jpg.
