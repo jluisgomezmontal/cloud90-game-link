@@ -82,6 +82,7 @@ namespace Cloud90.GameLink
         {
             switch (game)
             {
+                case "smw": return "Necesitas SuperMarioWorldRecomp 0.15.6 compatible para Windows y tu ROM USA. Abre el juego normalmente una vez, selecciona la ROM y ciérralo. Desactiva Native Co-op y Captain Falcon en Mods. Selecciona la carpeta con SuperMarioWorldSNESRecomp.exe. No requiere Python; Cloud90 no incluye ROM ni runtime.";
                 case "hades": return "Necesitas Hades de Steam para Windows. Cierra el juego y pulsa Elegir carpeta: selecciona la carpeta de Hades que contiene Content y x64. Game Link instala la integración automáticamente. La opción Usar Vulkan permite abrir la versión Vulkan.";
                 case "kof2002": return "Necesitas MAME para Windows y tus archivos kof2002.zip y neogeo.zip dentro de la carpeta roms de MAME. No descomprimas los ZIP. Pulsa Elegir carpeta y selecciona la carpeta que contiene mame.exe, no la carpeta roms. Game Link instala su plugin; no incluye el juego ni el BIOS.";
                 case "mslug3": return "Necesitas MAME para Windows y tus archivos mslug3.zip y neogeo.zip dentro de la carpeta roms de MAME. No descomprimas los ZIP. Pulsa Elegir carpeta y selecciona la carpeta que contiene mame.exe, no la carpeta roms. Game Link instala su plugin; no incluye el juego ni el BIOS.";
@@ -95,6 +96,7 @@ namespace Cloud90.GameLink
         {
             switch (game)
             {
+                case "smw": return "Pulsa Abrir juego y selecciona 1 Player. El juego abre directamente usando tu ROM y ajustes existentes. Entra en un nivel y mantén Game Link abierto. F9 pausa los efectos; mientras Game Link controla el juego, F9 no carga la ranura de estado 9. Shift+F9 conserva su función de guardar.";
                 case "ctrnf": return "Pulsa Abrir juego. Se abrirá el cliente original de CTR: allí pulsa Jugar. Los ajustes de idioma, pantalla, audio y mando se cambian en ese cliente. Inicia una carrera local de Arcade normal, con un jugador humano contra la CPU.";
                 case "kof2002": return "Pulsa Abrir juego para iniciar KOF 2002 en MAME con el plugin activo. Inserta crédito e inicia una partida como jugador 1 usando tus controles de MAME. Juega contra la computadora; Fightcade y las partidas en línea no son compatibles.";
                 case "mslug3": return "Pulsa Abrir juego para iniciar Metal Slug 3 en MAME con el plugin activo. Inserta crédito e inicia una partida de un jugador usando tus controles de MAME. Los efectos se aplican al jugador 1.";
@@ -107,6 +109,7 @@ namespace Cloud90.GameLink
         {
             switch (game)
             {
+                case "smw": return "Los efectos funcionan en niveles individuales, fuera de menús, pausa, muerte y transiciones. Los enemigos se duplican de tipos compatibles visibles y requieren espacios libres. Ráfagas y modificadores de salto requieren tierra firme y no montar a Yoshi. Invulnerabilidad no protege de caídas ni lava. Pausar, desconectar o cambiar de intento cancela los efectos temporales; poderes, vidas, reloj y enemigos ya aplicados son instantáneos y no se deshacen. Cargar estados guardados durante una conexión no está soportado: pausa los efectos y vuelve a abrir el juego para reconectar.";
                 case "hades": return "Los efectos requieren que Zagreus esté vivo en una cámara del inframundo, sin un menú abierto. Algunos poderes o enemigos dependen de la zona. Los efectos temporales terminan al cambiar de cámara.";
                 case "kof2002": return "Los efectos funcionan durante una ronda activa contra la CPU, no en la demostración del título ni en las pantallas de selección. Los efectos para el rival ayudan a la computadora.";
                 case "mslug3": return "Los efectos funcionan mientras juegas una partida que tú hayas iniciado, no en la demostración. Para crear enemigos debe haber enemigos compatibles en pantalla; si no hay, el juego puede rechazar el efecto.";
@@ -117,7 +120,7 @@ namespace Cloud90.GameLink
         }
         static string Troubleshooting(string game)
         {
-            string panic = game == "gtasa" || game == "cuphead" || game == "ctrnf" ? "También puedes usar F9 dentro del juego para pausar o reanudar los efectos. " : "";
+            string panic = game == "smw" || game == "gtasa" || game == "cuphead" || game == "ctrnf" ? "También puedes usar F9 dentro del juego para pausar o reanudar los efectos. " : "";
             return "Pulsa Pausar efectos en Game Link para detenerlos y Reanudar efectos para volver a recibirlos. " + panic + "Si no conecta, revisa tu acceso y el token de este juego en cloud90.dev. Si un efecto no se aplica, comprueba que la partida esté activa, que las reglas estén habilitadas y que no haya una pausa o un enfriamiento. Abre Mostrar registro para consultar el motivo. Cierra el juego antes de instalar, actualizar o quitar su integración.";
         }
     }

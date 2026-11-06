@@ -426,6 +426,7 @@ namespace Cloud90.GameLink
                 new GamePanel(this, new CtrHost()),
                 new GamePanel(this, new CupheadHost()),
                 new GamePanel(this, new GtaSaHost()),
+                new GamePanel(this, new SmwHost()),
             };
             navigation = new GameNavigationButton[panels.Length];
             for (int i = 0; i < panels.Length; i++)

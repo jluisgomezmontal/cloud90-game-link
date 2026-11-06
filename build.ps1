@@ -31,6 +31,7 @@ $artResources = @(Get-ChildItem (Join-Path $root 'assets') -File | Where-Object 
 $arguments = @('/nologo', '/target:winexe', '/platform:anycpu', '/optimize+', "/out:$out", "/win32icon:$(Join-Path $root 'assets\cloud90.ico')",
     "/win32manifest:$(Join-Path $root 'app.manifest')",
     "/resource:$(Join-Path $root 'mod\Cloud90.lua'),Cloud90.lua",
+    "/resource:$(Join-Path $root 'mod\smw\Cloud90.lua'),Cloud90.Smw.lua",
     "/resource:$(Join-Path $root 'mame\plugins\cloud90\init.lua'),cloud90-mame-init.lua",
     "/resource:$(Join-Path $root 'mame\plugins\cloud90\plugin.json'),cloud90-mame-plugin.json",
     '/r:System.Web.Extensions.dll', '/r:System.Windows.Forms.dll', '/r:System.Drawing.dll',

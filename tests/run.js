@@ -13,3 +13,4 @@ if (lauxlib.luaL_dofile(L, to_luastring(test)) !== lua.LUA_OK) {
   console.error(lua.lua_tojsstring(L, -1));
   process.exit(1);
 }
+require('./smw-run');

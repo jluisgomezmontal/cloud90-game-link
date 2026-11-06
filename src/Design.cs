@@ -66,6 +66,7 @@ namespace Cloud90.GameLink
         {
             switch (id)
             {
+                case "smw": return "Los poderes de Mario están en manos de tu chat.";
                 case "gtasa": return "Los Santos también juega con tu chat.";
                 case "hades": return "Tu chat tiene una cita con el inframundo.";
                 case "ctrnf": return "Dale a tu chat un lugar en la carrera.";
@@ -78,6 +79,7 @@ namespace Cloud90.GameLink
         {
             switch (id)
             {
+                case "smw": return "ROM USA, un jugador. F9 pausa los efectos y bloquea su carga de estado.";
                 case "gtasa": return "Edición clásica compatible. Modo individual. F9 pausa los efectos.";
                 case "ctrnf": return "Carrera local contra la CPU. Abre el cliente y pulsa Jugar. F9 pausa los efectos.";
                 case "cuphead": return "Steam, modo individual. F9 pausa los efectos.";
