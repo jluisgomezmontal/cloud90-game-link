@@ -8,6 +8,7 @@ and a collapsible activity log:
 
 | Game | How | Needs |
 |---|---|---|
+| **Super Mario World** | Embedded Lua module through the runtime's opt-in loopback TCP interface. Powers, enemies, timer, lives, movement, shield and roulette. | SuperMarioWorldRecomp 0.15.6 compatible Windows build and stock USA ROM, offline single-player. [Setup and validation](mod/smw/README.md). |
 | **GTA San Andreas** | Native ASI bridge with 25 effects and two server-side roulettes: health, armour, money, wanted level, car repairs, control/physics trolls, fog/camera effects and bounded enemy/pursuer/obstacle appearances. | Classic Windows x86 1.0 US executable with the exact supported hash; single player. See [GTA setup and limits](mod/gtasa/README.md). |
 | **Cuphead + The Delicious Last Course** | BepInEx plugin with a local session, heartbeat and per-attempt commands. Health, movement and control effects in solo levels. | Cuphead on Steam, Windows x64 build 20241530; DLC optional and separately owned. See [build and validation notes](mod/cuphead/README.md). |
 | **CTR Nitro-Fueled** | Side-by-side native offline bridge; Wumpa, weapons, turbo and timed controls. JSON inbox and native acknowledgements. | OCTR v0.6.4 portable, the separately installed [CTR Cloud90 module](https://github.com/jluisgomezmontal/ctr-cloud90/blob/main/CLOUD90.md), and the exact supported CUSA13795 1.21 image |

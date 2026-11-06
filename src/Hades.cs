@@ -200,6 +200,27 @@ namespace Cloud90.GameLink
         public void SetContext(string epoch) { lock (gate) { context = epoch ?? ""; } }
         public void SetPolicy(bool safe, bool allow) { lock (gate) { noDeath = safe; allowDestructive = allow; Write(); } }
 
+        // SMW's restricted VM cannot read a file. The native TCP client sends
+        // only our own fixed function and escaped, validated data from this inbox.
+        internal string SmwPoll(string launch, bool blocked)
+        {
+            lock (gate) {
+                StringBuilder b = new StringBuilder("return cloud90_smw.poll(");
+                b.Append(LuaString(launch)).Append(',').Append(connected && !disposed ? "true" : "false")
+                    .Append(',').Append(paused || blocked ? "true" : "false").Append(',').Append(noDeath ? "true" : "false").Append(",{ ");
+                foreach (Item i in items) {
+                    if ((DateTime.UtcNow - i.Sent).TotalSeconds >= 10) continue;
+                    b.Append("{id=").Append(LuaString(i.Id)).Append(",effect=").Append(LuaString(i.Effect))
+                        .Append(",epoch=").Append(LuaString(i.Epoch)).Append(",ms=").Append(i.Ms)
+                        .Append(",safe=").Append(i.Safe ? "true" : "false").Append("},");
+                    // The runtime caps each returned Lua string at 1024 bytes.
+                    // One command keeps status + capability list + ACK below it.
+                    break;
+                }
+                return b.Append("})").ToString();
+            }
+        }
+
         public static string LuaString(string s)
         {
             StringBuilder b = new StringBuilder("\"");
