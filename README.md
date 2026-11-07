@@ -8,6 +8,7 @@ and a collapsible activity log:
 
 | Game | How | Needs |
 |---|---|---|
+| **Marvel vs. Capcom** | Separate session/epoch-aware MAME adapter; 18 effects plus server roulette, active-fighter health, team super, clock and controls. | MAME 0.289, your own `mvscu.zip` (USA 980123), parent `mvsc.zip` and audited dependencies. Offline P1 vs CPU. [Setup and native validation](mod/mvsc/README.md). |
 | **Super Mario World** | Embedded Lua module through the runtime's opt-in loopback TCP interface. Powers, enemies, timer, lives, movement, shield and roulette. | SuperMarioWorldRecomp 0.15.6 compatible Windows build and stock USA ROM, offline single-player. [Setup and validation](mod/smw/README.md). |
 | **GTA San Andreas** | Native ASI bridge with 25 effects and two server-side roulettes: health, armour, money, wanted level, car repairs, control/physics trolls, fog/camera effects and bounded enemy/pursuer/obstacle appearances. | Classic Windows x86 1.0 US executable with the exact supported hash; single player. See [GTA setup and limits](mod/gtasa/README.md). |
 | **Cuphead + The Delicious Last Course** | BepInEx plugin with a local session, heartbeat and per-attempt commands. Health, movement and control effects in solo levels. | Cuphead on Steam, Windows x64 build 20241530; DLC optional and separately owned. See [build and validation notes](mod/cuphead/README.md). |

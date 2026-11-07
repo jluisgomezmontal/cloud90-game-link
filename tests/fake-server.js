@@ -18,7 +18,7 @@ server.on('upgrade', (req, socket, head) => {
     ws.on('message', (data) => {
       const msg = JSON.parse(data.toString());
       console.log('GOT ' + JSON.stringify(msg));
-      if (msg.type === 'hello') ws.send(JSON.stringify({ type: 'welcome', game: msg.game, ...((msg.game === 'cuphead' || msg.game === 'ctrnf' || msg.game === 'smw') ? {noDeath:false,allowDestructive:true} : {}) }));
+      if (msg.type === 'hello') ws.send(JSON.stringify({ type: 'welcome', game: msg.game, ...((msg.game === 'cuphead' || msg.game === 'ctrnf' || msg.game === 'smw' || msg.game === 'mvsc') ? {noDeath:false,allowDestructive:true} : {}) }));
       if (msg.type === 'hello' && process.env.FAKE_MODE === 'oversize') {
         const oversized = JSON.stringify({ type: 'effect', by: 'x'.repeat(70 * 1024) });
         ws.send(oversized.slice(0, 32 * 1024), { fin: false });
@@ -28,14 +28,15 @@ server.on('upgrade', (req, socket, head) => {
         sent = true;
         const ctr = process.env.FAKE_MODE === 'ctr';
         const cuphead = process.env.FAKE_MODE === 'cuphead';
+        const mvsc = process.env.FAKE_MODE === 'mvsc' || process.env.FAKE_MODE === 'mvsc-live';
         const smw = process.env.FAKE_MODE === 'smw';
         cupheadEpoch = msg.epoch || '';
-        const payload = Buffer.from(JSON.stringify({ type: 'effect', id: 'e-42', effect: smw ? 'fire_flower' : cuphead ? 'heal' : ctr ? 'give_item' : process.env.FAKE_EFFECT || 'slow', ms: ctr || cuphead || smw ? 1 : 15000, by: 'Ana \u00f1\u{1F600}', safe: true, arg: cuphead || smw ? '' : ctr ? 'missile' : 'HeavyMelee', ...((cuphead || ctr || smw) ? {epoch:cupheadEpoch,allowDestructive:true} : {}) }));
+        const payload = Buffer.from(JSON.stringify({ type: 'effect', id: 'e-42', effect: mvsc ? (process.env.FAKE_EFFECT || 'heal') : smw ? 'fire_flower' : cuphead ? 'heal' : ctr ? 'give_item' : process.env.FAKE_EFFECT || 'slow', ms: process.env.FAKE_MODE === 'mvsc-live' ? 10000 : ctr || cuphead || smw || mvsc ? 1 : 15000, by: 'Ana \u00f1\u{1F600}', safe: true, arg: cuphead || smw || mvsc ? '' : ctr ? 'missile' : 'HeavyMelee', ...((cuphead || ctr || smw || mvsc) ? {epoch:cupheadEpoch,allowDestructive:true} : {}) }));
         const split = payload.indexOf(0xc3) + 1;
         ws.send(payload.subarray(0, split), { binary: false, fin: false });
         ws.send(payload.subarray(split), { binary: false, fin: true });
       }
-      if (msg.type === 'ack' && ['cuphead','ctr','smw'].includes(process.env.FAKE_MODE) && msg.id === 'e-42') {
+      if (msg.type === 'ack' && ['cuphead','ctr','smw','mvsc'].includes(process.env.FAKE_MODE) && msg.id === 'e-42') {
         ws.send(JSON.stringify({type:'policy',noDeath:true,allowDestructive:false}));
         setTimeout(() => ws.send(JSON.stringify({type:'effect',id:'e-stale',effect:process.env.FAKE_MODE === 'ctr'?'give_item':process.env.FAKE_MODE === 'smw'?'fire_flower':'heal',ms:1,safe:true,arg:process.env.FAKE_MODE==='ctr'?'missile':'',epoch:cupheadEpoch})), 100);
       } else if (msg.type === 'ack') setTimeout(() => process.exit(0), 200);

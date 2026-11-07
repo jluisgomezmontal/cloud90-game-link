@@ -23,7 +23,7 @@ namespace Cloud90.GameLink
         public string CupheadDir = "";
         public string GtaSaDir = "";
         public string SmwDir = "";
-        public string SelectedGame = "smw";
+        public string SelectedGame = "mvsc";
         // game id ("hades", "kof2002") -> its token
         public readonly Dictionary<string, string> Tokens = new Dictionary<string, string>();
 
