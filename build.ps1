@@ -34,6 +34,8 @@ $arguments = @('/nologo', '/target:winexe', '/platform:anycpu', '/optimize+', "/
     "/resource:$(Join-Path $root 'mod\smw\Cloud90.lua'),Cloud90.Smw.lua",
     "/resource:$(Join-Path $root 'mame\plugins\cloud90\init.lua'),cloud90-mame-init.lua",
     "/resource:$(Join-Path $root 'mame\plugins\cloud90\mvsc.lua'),cloud90-mame-mvsc.lua",
+    "/resource:$(Join-Path $root 'mame\plugins\cloud90\mslugx.lua'),cloud90-mame-mslugx.lua",
+    "/resource:$(Join-Path $root 'mame\plugins\cloud90\session.lua'),cloud90-mame-session.lua",
     "/resource:$(Join-Path $root 'mame\plugins\cloud90\plugin.json'),cloud90-mame-plugin.json",
     '/r:System.Web.Extensions.dll', '/r:System.Windows.Forms.dll', '/r:System.Drawing.dll',
     '/r:System.Security.dll', '/r:System.Core.dll', '/r:System.IO.Compression.dll', '/r:System.IO.Compression.FileSystem.dll') + $cupheadResources + $gtaResources + $artResources + $sources

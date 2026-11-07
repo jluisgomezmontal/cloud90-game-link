@@ -82,6 +82,7 @@ namespace Cloud90.GameLink
         {
             switch (game)
             {
+                case "mslugx": return "Necesitas MAME 0.289 para Windows, tus ROMs mslugx.zip y neogeo.zip auditadas dentro de roms. Selecciona la carpeta con mame.exe e instala el plugin con MAME cerrado. Usa el token propio de Metal Slug X.";
                 case "mvsc": return "Necesitas MAME 0.289 para Windows y tus archivos mvscu.zip (USA 980123), mvsc.zip (padre) y dependencias en roms. Conserva ambos ZIP sin descomprimir. Elige la carpeta que contiene mame.exe. Game Link instala el plugin y audita la revisión USA antes de abrirla; no incluye ROMs. Este juego es CPS-2 y no requiere neogeo.zip.";
                 case "smw": return "Necesitas SuperMarioWorldRecomp 0.15.6 compatible para Windows y tu ROM USA. Abre el juego normalmente una vez, selecciona la ROM y ciérralo. Desactiva Native Co-op y Captain Falcon en Mods. Selecciona la carpeta con SuperMarioWorldSNESRecomp.exe. No requiere Python; Cloud90 no incluye ROM ni runtime.";
                 case "hades": return "Necesitas Hades de Steam para Windows. Cierra el juego y pulsa Elegir carpeta: selecciona la carpeta de Hades que contiene Content y x64. Game Link instala la integración automáticamente. La opción Usar Vulkan permite abrir la versión Vulkan.";
@@ -97,6 +98,7 @@ namespace Cloud90.GameLink
         {
             switch (game)
             {
+                case "mslugx": return "Abre Metal Slug X desde Game Link. Inserta crédito e inicia una partida individual como P1. F9 pausa efectos; Shift+F9 conserva la función original de MAME. Sin Fightcade ni netplay.";
                 case "mvsc": return "Pulsa Abrir juego. Inserta monedas hasta tener al menos un crédito, pulsa Start del jugador 1 y elige tus dos personajes. Juega contra la CPU. Usa el token propio de Marvel vs. Capcom; el de KOF no sirve para este juego. F9 o Pausar efectos limpian los modificadores temporales.";
                 case "smw": return "Pulsa Abrir juego y selecciona 1 Player. El juego abre directamente usando tu ROM y ajustes existentes. Entra en un nivel y mantén Game Link abierto. F9 pausa los efectos; mientras Game Link controla el juego, F9 no carga la ranura de estado 9. Shift+F9 conserva su función de guardar.";
                 case "ctrnf": return "Pulsa Abrir juego. Se abrirá el cliente original de CTR: allí pulsa Jugar. Los ajustes de idioma, pantalla, audio y mando se cambian en ese cliente. Inicia una carrera local de Arcade normal, con un jugador humano contra la CPU.";
@@ -111,6 +113,7 @@ namespace Cloud90.GameLink
         {
             switch (game)
             {
+                case "mslugx": return "Los efectos se habilitan a pie, en forma normal y durante una misión activa. La invulnerabilidad a golpes no garantiza protección contra caídas o reloj. Los sabotajes de controles pueden provocar muertes. Al morir o cambiar de zona se limpian los efectos temporales.";
                 case "mvsc": return "Los efectos funcionan durante una pelea individual activa: no durante demostraciones, selección, introducciones, KO, resultados, pausa ni dos jugadores. Curar y Quitar vida siguen al personaje activo; el súper pertenece al equipo. Quitar vida conserva al menos 1 HP y quitar tiempo conserva 10, pero la CPU todavía puede vencerte. Cambiar de combate, cargar un estado, desconectar o pausar cancela efectos temporales. Los cambios instantáneos de vida, súper y reloj no se deshacen.";
                 case "smw": return "Los efectos funcionan en niveles individuales, fuera de menús, pausa, muerte y transiciones. Los enemigos se duplican de tipos compatibles visibles y requieren espacios libres. Ráfagas y modificadores de salto requieren tierra firme y no montar a Yoshi. Invulnerabilidad no protege de caídas ni lava. Pausar, desconectar o cambiar de intento cancela los efectos temporales; poderes, vidas, reloj y enemigos ya aplicados son instantáneos y no se deshacen. Cargar estados guardados durante una conexión no está soportado: pausa los efectos y vuelve a abrir el juego para reconectar.";
                 case "hades": return "Los efectos requieren que Zagreus esté vivo en una cámara del inframundo, sin un menú abierto. Algunos poderes o enemigos dependen de la zona. Los efectos temporales terminan al cambiar de cámara.";

@@ -15,7 +15,7 @@ namespace Cloud90.GameLink
 {
     internal sealed class Link
     {
-        public const string Version = "cloud90-game-link-1.6.0";
+        public const string Version = "cloud90-game-link-1.7.0";
         // "hades", "kof2002": the token and the hello are this game's.
         public readonly string Game;
         readonly string title;
@@ -58,11 +58,11 @@ namespace Cloud90.GameLink
         {
             if (inbox != null && !ReferenceEquals(inbox, value)) inbox.Dispose();
             inbox = value; inbox.SetPaused(paused); inbox.Connected(welcomed);
-            if (Game == "cuphead" || Game == "ctrnf" || (Game == "gtasa" || (Game == "smw" || Game == "mvsc"))) { inbox.SetContext(gameContext); inbox.SetPolicy(noDeath, allowDestructive); }
+            if (Game == "cuphead" || Game == "ctrnf" || (Game == "gtasa" || (Game == "smw" || (Game == "mvsc" || Game == "mslugx")))) { inbox.SetContext(gameContext); inbox.SetPolicy(noDeath, allowDestructive); }
         }
         public void SetCapabilities(string[] value)
         {
-            if (Game != "cuphead" && Game != "ctrnf" && Game != "gtasa" && Game != "smw" && Game != "mvsc") return;
+            if (Game != "cuphead" && Game != "ctrnf" && Game != "gtasa" && Game != "smw" && Game != "mvsc" && Game != "mslugx") return;
             string[] next = value ?? new string[0];
             if (capabilities != null && string.Join(",", capabilities) == string.Join(",", next)) return;
             capabilities = next;
@@ -70,14 +70,14 @@ namespace Cloud90.GameLink
         }
         void ApplyPolicy(Dictionary<string, object> message)
         {
-            if (Game != "cuphead" && Game != "ctrnf" && Game != "gtasa" && Game != "smw" && Game != "mvsc") return;
+            if (Game != "cuphead" && Game != "ctrnf" && Game != "gtasa" && Game != "smw" && Game != "mvsc" && Game != "mslugx") return;
             noDeath = !message.ContainsKey("noDeath") || !(message["noDeath"] is bool) || (bool)message["noDeath"];
             allowDestructive = message.ContainsKey("allowDestructive") && message["allowDestructive"] is bool && (bool)message["allowDestructive"];
             if (inbox != null) inbox.SetPolicy(noDeath, allowDestructive);
         }
         public void SetContext(string epoch)
         {
-            if ((Game != "cuphead" && Game != "ctrnf" && Game != "gtasa" && Game != "smw" && Game != "mvsc") || epoch == gameContext) return;
+            if ((Game != "cuphead" && Game != "ctrnf" && Game != "gtasa" && Game != "smw" && Game != "mvsc" && Game != "mslugx") || epoch == gameContext) return;
             gameContext = epoch ?? "";
             if (inbox != null) inbox.SetContext(gameContext);
             Fire(SendState());
@@ -280,7 +280,7 @@ namespace Cloud90.GameLink
                 string effect = Str(msg, "effect");
                 string reason = null;
                 if (!EffectName.IsMatch(effect)) reason = "efecto desconocido";
-                else if ((Game == "cuphead" || (Game == "gtasa" || (Game == "smw" || Game == "mvsc")) || (Game == "ctrnf" && capabilities != null && Array.IndexOf(capabilities, "fall_void") >= 0)) && (string.IsNullOrEmpty(gameContext) || Str(msg, "epoch") != gameContext)) reason = "intento anterior";
+                else if ((Game == "cuphead" || (Game == "gtasa" || (Game == "smw" || (Game == "mvsc" || Game == "mslugx"))) || (Game == "ctrnf" && capabilities != null && Array.IndexOf(capabilities, "fall_void") >= 0)) && (string.IsNullOrEmpty(gameContext) || Str(msg, "epoch") != gameContext)) reason = "intento anterior";
                 else if (paused) reason = "en pausa";
                 else if (inbox == null || !inPlay) reason = "no disponible ahora";
                 if (reason != null)
@@ -293,7 +293,7 @@ namespace Cloud90.GameLink
                 Inbox.Item item = new Inbox.Item();
                 item.Id = id;
                 item.Effect = effect;
-                if (Game == "cuphead" || Game == "ctrnf" || (Game == "gtasa" || (Game == "smw" || Game == "mvsc"))) item.Epoch = Str(msg, "epoch");
+                if (Game == "cuphead" || Game == "ctrnf" || (Game == "gtasa" || (Game == "smw" || (Game == "mvsc" || Game == "mslugx")))) item.Epoch = Str(msg, "epoch");
                 item.Ms = Math.Max(0, Math.Min(ms, 120000));
                 item.By = Str(msg, "by");
                 item.Safe = msg.ContainsKey("safe") && msg["safe"] is bool && (bool)msg["safe"];
@@ -321,7 +321,7 @@ namespace Cloud90.GameLink
                 if (space <= 0) return;
                 string id = rest.Substring(0, space);
                 string result = rest.Substring(space + 1).Trim();
-                if (inbox != null && inbox.Take(id) == null && (Game == "ctrnf" || Game == "cuphead" || (Game == "gtasa" || (Game == "smw" || Game == "mvsc")))) return;
+                if (inbox != null && inbox.Take(id) == null && (Game == "ctrnf" || Game == "cuphead" || (Game == "gtasa" || (Game == "smw" || (Game == "mvsc" || Game == "mslugx"))))) return;
                 bool ok = result == "ok";
                 Log.Write(title + ": efecto " + id + ": " + result);
                 Fire(Ack(id, ok, ok ? null : result));
@@ -381,8 +381,8 @@ namespace Cloud90.GameLink
         Task SendState()
         {
             var message = new Dictionary<string, object> { { "type", "state" }, { "paused", paused }, { "inPlay", inPlay } };
-            if (Game == "cuphead" || Game == "ctrnf" || (Game == "gtasa" || (Game == "smw" || Game == "mvsc"))) message["epoch"] = gameContext;
-            if ((Game == "cuphead" || Game == "ctrnf" || (Game == "gtasa" || (Game == "smw" || Game == "mvsc"))) && capabilities != null) message["capabilities"] = capabilities;
+            if (Game == "cuphead" || Game == "ctrnf" || (Game == "gtasa" || (Game == "smw" || (Game == "mvsc" || Game == "mslugx")))) message["epoch"] = gameContext;
+            if ((Game == "cuphead" || Game == "ctrnf" || (Game == "gtasa" || (Game == "smw" || (Game == "mvsc" || Game == "mslugx")))) && capabilities != null) message["capabilities"] = capabilities;
             return Send(message);
         }
 

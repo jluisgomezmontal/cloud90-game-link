@@ -86,13 +86,13 @@ local GAMES = { kof2002 = KOF2002, mslug3 = MSLUG3 }
 local CONTROLS = { "Up", "Down", "Left", "Right", "A", "B", "C", "D" }
 
 function exports.startplugin()
-	if os.getenv("CLOUD90_GAME_ID") == "mvsc" then
+	if os.getenv("CLOUD90_GAME_ID") == "mvsc" or os.getenv("CLOUD90_GAME_ID") == "mslugx" then
 		-- Plugin bootstrap runs before manager.machine exists. Construct the
 		-- CPS-2 adapter on the first machine reset, just like the legacy paths.
 		exports.subscriptions = {}
 		local started = false
 		table.insert(exports.subscriptions, emu.add_machine_reset_notifier(function()
-			if not started then started = true; require("cloud90/mvsc").startplugin(exports) end
+			if not started then started = true; require("cloud90/"..os.getenv("CLOUD90_GAME_ID")).startplugin(exports) end
 		end))
 		return
 	end

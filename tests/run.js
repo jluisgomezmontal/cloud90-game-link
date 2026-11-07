@@ -15,3 +15,5 @@ if (lauxlib.luaL_dofile(L, to_luastring(test)) !== lua.LUA_OK) {
 }
 require('./smw-run');
 require('./mvsc-run');
+
+require('./mslugx-run');
