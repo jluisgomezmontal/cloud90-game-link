@@ -41,8 +41,8 @@ namespace Cloud90.GameLink
                             foreach (System.Windows.Forms.Control child in control.Controls) visit(child);
                         };
                         visit(form);
-                        Check(games.Count == 7, "main window constructs all seven library games");
-                        foreach (string id in new[] { "hades", "kof2002", "mslug3", "ctrnf", "cuphead", "gtasa", "smw" })
+                        Check(games.Count == 8, "main window constructs all eight library games");
+                        foreach (string id in new[] { "hades", "kof2002", "mslug3", "ctrnf", "cuphead", "gtasa", "smw", "mvsc" })
                             Check(games.Exists(delegate(GamePanel game) { return game.GameId == id; }), "library game: " + id);
                     }
                 } catch (Exception error) { Check(false, "main window startup: " + error.GetType().Name); }
@@ -271,6 +271,8 @@ namespace Cloud90.GameLink
         { return JsonProtocol(server, inboxPath, "cuphead"); }
         public static int SmwProtocol(string server, string inboxPath)
         { return JsonProtocol(server, inboxPath, "smw"); }
+        public static int MvscProtocol(string server, string inboxPath)
+        { return JsonProtocol(server, inboxPath, "mvsc"); }
         static int JsonProtocol(string server, string inboxPath, string game)
         {
             int before = failures;
@@ -278,10 +280,11 @@ namespace Cloud90.GameLink
             s.Server = server;
             s.Tokens[game] = "c90gl_test";
             Link link = new Link(delegate { return s; }, game, game);
-            using (Inbox inbox = new Inbox(inboxPath, "protocol-session")) {
+            using (Inbox inbox = new Inbox(inboxPath, "protocol-session", game == "mvsc")) {
                 inbox.SetContext("attempt-1");
                 link.UseInbox(inbox);
-                if (game == "smw") { link.SetContext("attempt-1"); link.SetCapabilities(new[] { "fire_flower", "small" }); }
+                if (game == "mvsc") { link.SetContext("attempt-1"); link.SetCapabilities(new[] { "heal", "damage" }); }
+                else if (game == "smw") { link.SetContext("attempt-1"); link.SetCapabilities(new[] { "fire_flower", "small" }); }
                 else if (game == "cuphead") { link.SetContext("attempt-1"); link.SetCapabilities(new[] { "heal", "ice_floor" }); }
                 else { link.OnModLine("capabilities give_item,fall_void,chaos"); link.OnModLine("context attempt-1"); }
                 link.Start();
@@ -294,14 +297,14 @@ namespace Cloud90.GameLink
                     if (text.Contains("e-42")) break;
                     Thread.Sleep(50);
                 }
-                Check(game == "smw" ? text.Contains("fire_flower") && text.Contains("attempt-1") : game == "cuphead" ? text.Contains("heal") && text.Contains("\"safe\":true") && text.Contains("attempt-1") : text.Contains("give_item") && text.Contains("missile"), game + " WebSocket command reaches JSON inbox with the expected safety fields");
-                Check(text.Contains("protocol-session") && text.Contains("expiresMs"), "CTR command has its session and expiry");
-                if (game == "cuphead" || game == "ctrnf" || game == "smw") Check(text.Contains("\"noDeath\":false") && text.Contains("\"allowDestructive\":true"), "Cuphead welcome and per-command permissions reach the native bridge");
+                Check(game == "mvsc" ? text.Contains("heal") && text.Contains("attempt-1") : game == "smw" ? text.Contains("fire_flower") && text.Contains("attempt-1") : game == "cuphead" ? text.Contains("heal") && text.Contains("\"safe\":true") && text.Contains("attempt-1") : text.Contains("give_item") && text.Contains("missile"), game + " WebSocket command reaches JSON inbox with the expected safety fields");
+                Check(text.Contains("protocol-session") && text.Contains(game == "mvsc" ? "expiresUtcMs" : "expiresMs"), "CTR command has its session and expiry");
+                if (game == "cuphead" || game == "ctrnf" || game == "smw" || game == "mvsc") Check(text.Contains("\"noDeath\":false") && (game == "mvsc" || text.Contains("\"allowDestructive\":true")), "welcome policy reaches the native bridge");
                 link.OnModLine("ack e-42 ok");
-                if (game == "cuphead" || game == "ctrnf" || game == "smw") link.SetContext("attempt-2");
+                if (game == "cuphead" || game == "ctrnf" || game == "smw" || game == "mvsc") link.SetContext("attempt-2");
                 Thread.Sleep(500);
                 Check(!ReadShared(inboxPath).Contains("e-42"), game + " native acknowledgement clears the command");
-                if (game == "cuphead" || game == "ctrnf" || game == "smw") Check(ReadShared(inboxPath).Contains("\"noDeath\":true") && ReadShared(inboxPath).Contains("\"allowDestructive\":false"), "Cuphead permission revocation reaches a running bridge");
+                if (game == "cuphead" || game == "ctrnf" || game == "smw" || game == "mvsc") Check(ReadShared(inboxPath).Contains("\"noDeath\":true") && (game == "mvsc" || ReadShared(inboxPath).Contains("\"allowDestructive\":false")), "policy changes reach a running bridge");
                 link.Stop();
             }
             return failures - before;

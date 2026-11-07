@@ -112,7 +112,7 @@ namespace Cloud90.GameLink
         Process game;
         Timer timer;
         SmwClient client;
-        SmwHotkey hotkey;
+        GamePanicHotkey hotkey;
         string session, lastStatus;
         bool? lastPlay;
         long lastFrame = -1;
@@ -167,7 +167,7 @@ namespace Cloud90.GameLink
             foreach (string key in new List<string>(EnvironmentNames(info)))
                 if (key.StartsWith("SNES_NET_", StringComparison.Ordinal) || key == "SNESRECOMP_FORCE_TURBO") info.EnvironmentVariables.Remove(key);
             game = Process.Start(info);
-            hotkey = new SmwHotkey(game.Id, delegate { link.SetPaused(!link.Paused); });
+            hotkey = new GamePanicHotkey(game.Id, delegate { link.SetPaused(!link.Paused); });
             Progress("Abriendo SMW. Selecciona 1 Player y entra en un nivel.");
             timer = new Timer(delegate {
                 if (!Monitor.TryEnter(gate)) return;
@@ -248,7 +248,7 @@ namespace Cloud90.GameLink
 
     // F9 is normally SMW's load-state shortcut. Consume both key edges only for
     // this game window, while preserving Shift+F9 and all other applications.
-    internal sealed class SmwHotkey : IDisposable
+    internal sealed class GamePanicHotkey : IDisposable
     {
         delegate IntPtr Hook(int code, IntPtr wp, IntPtr lp);
         readonly Hook callback;
@@ -261,7 +261,7 @@ namespace Cloud90.GameLink
         [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr window, out uint pid);
         [DllImport("user32.dll")] static extern short GetAsyncKeyState(int key);
         [DllImport("kernel32.dll", CharSet=CharSet.Unicode)] static extern IntPtr GetModuleHandle(string module);
-        internal SmwHotkey(int pid, Action toggle)
+        internal GamePanicHotkey(int pid, Action toggle)
         {
             callback=delegate(int code, IntPtr wp, IntPtr lp) {
                 if (code>=0 && Marshal.ReadInt32(lp)==0x78) {
@@ -278,7 +278,7 @@ namespace Cloud90.GameLink
                 return CallNextHookEx(handle,code,wp,lp);
             };
             handle=SetWindowsHookEx(13,callback,GetModuleHandle(null),0);
-            if (handle==IntPtr.Zero) Log.Write("SMW: F9 no disponible; usa el botón Pausar efectos de Game Link.");
+            if (handle==IntPtr.Zero) Log.Write("Game Link: F9 no disponible; usa el botón Pausar efectos de Game Link.");
         }
         public void Dispose() { if (handle!=IntPtr.Zero) { UnhookWindowsHookEx(handle); handle=IntPtr.Zero; } }
     }

@@ -8,10 +8,11 @@ $work = Join-Path ([IO.Path]::GetTempPath()) ('c90-kof-e2e-' + [Guid]::NewGuid()
 New-Item -ItemType Directory -Force $work | Out-Null
 $env:CLOUD90_DIR = $work.Replace('\', '/')
 $plugins = (Join-Path $root 'mame\plugins') + ';' + (Join-Path $Mame 'plugins')
-$args = @('kof2002', '-video', 'none', '-sound', 'none', '-nothrottle', '-skip_gameinfo',
+$mameArgs = @('kof2002', '-video', 'none', '-sound', 'none', '-nothrottle', '-skip_gameinfo',
+    '-cfg_directory', (Join-Path $work 'cfg'), '-nvram_directory', (Join-Path $work 'nvram'), '-state_directory', (Join-Path $work 'states'),
     '-pluginspath', $plugins, '-plugin', 'cloud90',
     '-autoboot_script', (Join-Path $PSScriptRoot 'kof_e2e.lua'), '-seconds_to_run', '120')
-$p = Start-Process (Join-Path $Mame 'mame.exe') -ArgumentList $args -WorkingDirectory $Mame -PassThru -NoNewWindow `
+$p = Start-Process (Join-Path $Mame 'mame.exe') -ArgumentList $mameArgs -WorkingDirectory $Mame -PassThru -WindowStyle Hidden `
     -RedirectStandardOutput (Join-Path $work 'out.txt') -RedirectStandardError (Join-Path $work 'err.txt')
 $p.WaitForExit(300000) | Out-Null
 '--- e2e.log'; Get-Content (Join-Path $work 'e2e.log') -ErrorAction SilentlyContinue
@@ -44,5 +45,8 @@ if ($during -lt $before) { "FAIL: health dropped while invincible ($before -> $d
 # Healing the rival: ok, or refused when the rival is at full health.
 if (($acks -match '^ack e8 (ok|no disponible ahora)$').Count -ne 1) { 'FAIL: rival_heal'; $failed++ }
 if (($acks -match '^ack e7 modo sin morir$').Count -ne 1) { 'FAIL: ko not refused in safe mode'; $failed++ }
-Remove-Item -Recurse -Force $work -ErrorAction SilentlyContinue
+$tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\') + '\'
+$cleanup = [IO.Path]::GetFullPath($work)
+if (!$cleanup.StartsWith($tempRoot, [StringComparison]::OrdinalIgnoreCase) -or ![IO.Path]::GetFileName($cleanup).StartsWith('c90-kof-e2e-')) { throw 'Unsafe test cleanup path' }
+Remove-Item -LiteralPath $cleanup -Recurse -Force -ErrorAction SilentlyContinue
 if ($failed -eq 0) { 'cloud90 mame kof2002 e2e passed' } else { "$failed failed"; exit 1 }

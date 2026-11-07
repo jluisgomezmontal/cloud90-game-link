@@ -14,3 +14,4 @@ if (lauxlib.luaL_dofile(L, to_luastring(test)) !== lua.LUA_OK) {
   process.exit(1);
 }
 require('./smw-run');
+require('./mvsc-run');

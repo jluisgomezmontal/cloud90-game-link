@@ -66,6 +66,7 @@ namespace Cloud90.GameLink
         {
             switch (id)
             {
+                case "mvsc": return "Tu chat decide cómo cambia la siguiente pelea.";
                 case "smw": return "Los poderes de Mario están en manos de tu chat.";
                 case "gtasa": return "Los Santos también juega con tu chat.";
                 case "hades": return "Tu chat tiene una cita con el inframundo.";
@@ -79,6 +80,7 @@ namespace Cloud90.GameLink
         {
             switch (id)
             {
+                case "mvsc": return "MAME 0.289, revisión USA. Jugador 1 contra CPU. F9 pausa los efectos.";
                 case "smw": return "ROM USA, un jugador. F9 pausa los efectos y bloquea su carga de estado.";
                 case "gtasa": return "Edición clásica compatible. Modo individual. F9 pausa los efectos.";
                 case "ctrnf": return "Carrera local contra la CPU. Abre el cliente y pulsa Jugar. F9 pausa los efectos.";
@@ -93,7 +95,7 @@ namespace Cloud90.GameLink
     internal sealed class GameBanner : Panel
     {
         readonly Image art;
-        public GameBanner(string id) { art = Design.Art(id + ".jpg"); DoubleBuffered = true; BackColor = Design.Surface; }
+        public GameBanner(string id) { art = Design.Art(id + ".jpg") ?? Design.Art(id + ".png"); DoubleBuffered = true; BackColor = Design.Surface; }
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
@@ -119,7 +121,7 @@ namespace Cloud90.GameLink
         public bool Selected { get { return selected; } set { selected = value; AccessibleDescription = value ? "Juego seleccionado" : "Seleccionar juego"; Invalidate(); } }
         public GameNavigationButton(string id, string title, string subtitle)
         {
-            this.title = title; this.subtitle = subtitle; cover = Design.Art(id + ".jpg");
+            this.title = title; this.subtitle = subtitle; cover = Design.Art(id + ".jpg") ?? Design.Art(id + ".png");
             Text = title; AccessibleName = title; AccessibleRole = AccessibleRole.PageTab;
             SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint, true);
             FlatStyle = FlatStyle.Flat; FlatAppearance.BorderSize = 0; Cursor = Cursors.Hand;

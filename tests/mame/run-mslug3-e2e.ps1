@@ -8,10 +8,11 @@ $work = Join-Path ([IO.Path]::GetTempPath()) ('c90-mslug3-e2e-' + [Guid]::NewGui
 New-Item -ItemType Directory -Force $work | Out-Null
 $env:CLOUD90_DIR = $work.Replace('\', '/')
 $plugins = (Join-Path $root 'mame\plugins') + ';' + (Join-Path $Mame 'plugins')
-$args = @('mslug3', '-video', 'none', '-sound', 'none', '-nothrottle', '-skip_gameinfo',
+$mameArgs = @('mslug3', '-video', 'none', '-sound', 'none', '-nothrottle', '-skip_gameinfo',
+    '-cfg_directory', (Join-Path $work 'cfg'), '-nvram_directory', (Join-Path $work 'nvram'), '-state_directory', (Join-Path $work 'states'),
     '-pluginspath', $plugins, '-plugin', 'cloud90',
     '-autoboot_script', (Join-Path $PSScriptRoot 'mslug3_e2e.lua'), '-seconds_to_run', '400')
-$p = Start-Process (Join-Path $Mame 'mame.exe') -ArgumentList $args -WorkingDirectory $Mame -PassThru -NoNewWindow `
+$p = Start-Process (Join-Path $Mame 'mame.exe') -ArgumentList $mameArgs -WorkingDirectory $Mame -PassThru -WindowStyle Hidden `
     -RedirectStandardOutput (Join-Path $work 'out.txt') -RedirectStandardError (Join-Path $work 'err.txt')
 $p.WaitForExit(500000) | Out-Null
 '--- e2e.log'; Get-Content (Join-Path $work 'e2e.log') -ErrorAction SilentlyContinue
@@ -47,5 +48,8 @@ foreach ($id in 'e1','e2','e3','e4','e5','e6','e7','e8','e10','e14') {
 $start = ($log | Select-String 'freeze start timer=(..)').Matches.Groups[1].Value
 $later = ($log | Select-String 'freeze later timer=(..)').Matches.Groups[1].Value
 if ($start -ne $later) { "FAIL: timer moved while frozen ($start -> $later)"; $failed++ }
-Remove-Item -Recurse -Force $work -ErrorAction SilentlyContinue
+$tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\') + '\'
+$cleanup = [IO.Path]::GetFullPath($work)
+if (!$cleanup.StartsWith($tempRoot, [StringComparison]::OrdinalIgnoreCase) -or ![IO.Path]::GetFileName($cleanup).StartsWith('c90-mslug3-e2e-')) { throw 'Unsafe test cleanup path' }
+Remove-Item -LiteralPath $cleanup -Recurse -Force -ErrorAction SilentlyContinue
 if ($failed -eq 0) { 'cloud90 mame mslug3 e2e passed' } else { "$failed failed"; exit 1 }

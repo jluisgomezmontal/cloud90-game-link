@@ -139,6 +139,7 @@ namespace Cloud90.GameLink
         bool paused;
         bool noDeath = true, allowDestructive;
         readonly string session;
+        readonly bool utcClock;
         readonly System.Threading.Timer heartbeat;
         bool connected;
         bool disposed;
@@ -147,9 +148,13 @@ namespace Cloud90.GameLink
 
         public Inbox(string path) { this.path = path; Write(); }
         public Inbox(string path, string session)
+            : this(path, session, false) { }
+
+        public Inbox(string path, string session, bool utcClock)
         {
             this.path = path;
             this.session = session;
+            this.utcClock = utcClock;
             Write();
             heartbeat = new System.Threading.Timer(delegate { lock (gate) { if (!disposed) Write(); } }, null, 500, 500);
         }
@@ -264,6 +269,7 @@ namespace Cloud90.GameLink
 
         void WriteJson()
         {
+            if (utcClock) { WriteMameJson(); return; }
             List<object> effects = new List<object>();
             ulong now = GetTickCount64();
             foreach (Item i in items)
@@ -278,6 +284,22 @@ namespace Cloud90.GameLink
                 File.WriteAllText(temp, text, new UTF8Encoding(false));
                 if (File.Exists(path)) File.Replace(temp, path, null); else File.Move(temp, path);
             } catch (IOException e) { Log.Write("CTR: no se pudo escribir el buzón: " + e.Message); }
+        }
+
+        void WriteMameJson()
+        {
+            var effects = new List<object>();
+            long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            foreach (Item i in items) {
+                long expires = new DateTimeOffset(DateTime.SpecifyKind(i.Sent, DateTimeKind.Utc)).ToUnixTimeMilliseconds() + 10000;
+                if (expires <= now) continue;
+                effects.Add(new { id=i.Id, effect=i.Effect, ms=i.Ms, safe=i.Safe, arg=i.Arg, epoch=i.Epoch, expiresUtcMs=expires });
+            }
+            string text = new JavaScriptSerializer().Serialize(new { session=session, heartbeatUtcMs=now, paused=paused || !connected || disposed, noDeath=noDeath, effects=effects });
+            try {
+                string temp=path+".tmp"; File.WriteAllText(temp,text,new UTF8Encoding(false));
+                if (File.Exists(path)) File.Replace(temp,path,null); else File.Move(temp,path);
+            } catch (IOException e) { Log.Write("MAME: no se pudo escribir el buzón: " + e.Message); }
         }
     }
 

@@ -54,6 +54,7 @@ namespace Cloud90.GameLink
             Directory.CreateDirectory(dir);
             File.WriteAllText(Path.Combine(dir, "init.lua"), FileText("cloud90-mame-init.lua"), new UTF8Encoding(false));
             File.WriteAllText(Path.Combine(dir, "plugin.json"), FileText("cloud90-mame-plugin.json"), new UTF8Encoding(false));
+            File.WriteAllText(Path.Combine(dir, "mvsc.lua"), FileText("cloud90-mame-mvsc.lua"), new UTF8Encoding(false));
             Log.Write("plugin de MAME instalado en " + dir);
         }
 
@@ -87,6 +88,7 @@ namespace Cloud90.GameLink
         public event Action Exited;
 
         public bool Running { get { return process != null && !process.HasExited; } }
+        public int ProcessId { get { return process.Id; } }
 
         public static bool AnotherRunning() { return Process.GetProcessesByName("mame").Length > 0; }
 
@@ -94,14 +96,26 @@ namespace Cloud90.GameLink
         internal static string ExtraArgs = "";
 
         public void Start(string mame, string set)
+        { Start(mame, set, set, null); }
+
+        // Cloud90 id and emulated set are distinct for MVSC (mvsc / mvscu).
+        public void Start(string mame, string set, string gameId, string session)
         {
-            this.set = set;
-            File.WriteAllText(AcksPath(set), "");
+            this.set = gameId;
+            File.WriteAllText(AcksPath(gameId), "");
             readTo = 0;
             ProcessStartInfo info = new ProcessStartInfo(Path.Combine(mame, "mame.exe"), set + " -plugin cloud90 -skip_gameinfo " + ExtraArgs);
+            if (session != null) info.Arguments += " -rompath \"" + Path.Combine(mame,"roms") + "\"";
             info.WorkingDirectory = mame;
             info.UseShellExecute = false;
-            info.EnvironmentVariables["CLOUD90_DIR"] = WorkDir(set).Replace('\\', '/');
+            info.EnvironmentVariables["CLOUD90_DIR"] = WorkDir(gameId).Replace('\\', '/');
+            if (session != null) {
+                info.EnvironmentVariables["CLOUD90_SESSION"] = session;
+                info.EnvironmentVariables["CLOUD90_GAME_ID"] = gameId;
+            } else {
+                info.EnvironmentVariables.Remove("CLOUD90_SESSION");
+                info.EnvironmentVariables.Remove("CLOUD90_GAME_ID");
+            }
             process = new Process();
             process.StartInfo = info;
             process.EnableRaisingEvents = true;

@@ -118,7 +118,7 @@ namespace Cloud90.GameLink
         readonly Label connectionHint = new Label();
         readonly ToolTip details = new ToolTip();
 
-        public string TabTitle { get { return host.Title + (host is MameHost ? " (MAME)" : ""); } }
+        public string TabTitle { get { return host.Title + (host is MameHost || host is MvscHost ? " (MAME)" : ""); } }
         public string GameId { get { return host.Id; } }
 
         public GamePanel(MainForm form, GameHost host)
@@ -147,7 +147,7 @@ namespace Cloud90.GameLink
             Controls.Add(layout);
 
             var banner = new GameBanner(host.Id) { Size = new Size(828, 200), Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 18) };
-            Label edition = Design.Label(host is MameHost ? "Arcade / MAME" : "PC / Windows", 10, Color.FromArgb(196, 167, 255));
+            Label edition = Design.Label(host is MameHost || host is MvscHost ? "Arcade / MAME" : "PC / Windows", 10, Color.FromArgb(196, 167, 255));
             edition.SetBounds(24, 28, 200, 24);
             Label heading = Design.Label(host.Title, 27, Design.Text);
             heading.Font = new Font("Segoe UI Semibold", 27);
@@ -427,6 +427,7 @@ namespace Cloud90.GameLink
                 new GamePanel(this, new CupheadHost()),
                 new GamePanel(this, new GtaSaHost()),
                 new GamePanel(this, new SmwHost()),
+                new GamePanel(this, new MvscHost()),
             };
             navigation = new GameNavigationButton[panels.Length];
             for (int i = 0; i < panels.Length; i++)
