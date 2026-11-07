@@ -14,7 +14,7 @@ $env:CLOUD90_GAME_LINK_DIR=Join-Path $OutputDir 'data'
 $csc=Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
 $dll=Join-Path $OutputDir 'MvscLive.dll'
 $sources=@(Get-ChildItem (Join-Path $root 'src') -Filter *.cs | ForEach-Object FullName)+(Join-Path $root 'tests\MvscLive.cs')
-& $csc /nologo /target:library "/out:$dll" /r:System.Web.Extensions.dll /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Security.dll /r:System.Core.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll "/resource:$(Join-Path $root 'mame\plugins\cloud90\init.lua'),cloud90-mame-init.lua" "/resource:$(Join-Path $root 'mame\plugins\cloud90\mvsc.lua'),cloud90-mame-mvsc.lua" "/resource:$(Join-Path $root 'mame\plugins\cloud90\plugin.json'),cloud90-mame-plugin.json" @sources
+& $csc /nologo /target:library "/out:$dll" /r:System.Web.Extensions.dll /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Security.dll /r:System.Core.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll "/resource:$(Join-Path $root 'mame\plugins\cloud90\init.lua'),cloud90-mame-init.lua" "/resource:$(Join-Path $root 'mame\plugins\cloud90\mvsc.lua'),cloud90-mame-mvsc.lua" "/resource:$(Join-Path $root 'mame\plugins\cloud90\session.lua'),cloud90-mame-session.lua" "/resource:$(Join-Path $root 'mame\plugins\cloud90\mslugx.lua'),cloud90-mame-mslugx.lua" "/resource:$(Join-Path $root 'mame\plugins\cloud90\plugin.json'),cloud90-mame-plugin.json" @sources
 if($LASTEXITCODE -ne 0){throw 'Native app test compile failed'}
 [Reflection.Assembly]::LoadFrom($dll)|Out-Null
 $listener=[Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback,0);$listener.Start();$port=$listener.LocalEndpoint.Port;$listener.Stop()

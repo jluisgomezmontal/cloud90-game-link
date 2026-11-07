@@ -55,6 +55,8 @@ namespace Cloud90.GameLink
             File.WriteAllText(Path.Combine(dir, "init.lua"), FileText("cloud90-mame-init.lua"), new UTF8Encoding(false));
             File.WriteAllText(Path.Combine(dir, "plugin.json"), FileText("cloud90-mame-plugin.json"), new UTF8Encoding(false));
             File.WriteAllText(Path.Combine(dir, "mvsc.lua"), FileText("cloud90-mame-mvsc.lua"), new UTF8Encoding(false));
+            File.WriteAllText(Path.Combine(dir, "mslugx.lua"), FileText("cloud90-mame-mslugx.lua"), new UTF8Encoding(false));
+            File.WriteAllText(Path.Combine(dir, "session.lua"), FileText("cloud90-mame-session.lua"), new UTF8Encoding(false));
             Log.Write("plugin de MAME instalado en " + dir);
         }
 

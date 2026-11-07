@@ -21,7 +21,7 @@ namespace Cloud90.GameLink {
                 if(!acks.Contains("hello cloud90-mvsc-1 mvscu") || !acks.Contains("ack e-42 ok"))throw new Exception("MVSC WebSocket-to-MAME did not return a successful game ACK");
                 Console.WriteLine("PASS full chain: mvsc token and hello -> mvscu MAME -> JSON inbox -> effect -> ACK -> WebSocket");
             } finally {
-                link.Stop();var p=(MameProcess)typeof(MvscHost).GetField("game",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(host);
+                link.Stop();var p=(MameProcess)typeof(ModernMameHost).GetField("game",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(host);
                 if(p.Running) {using(var child=Process.GetProcessById(p.ProcessId)){child.Kill();child.WaitForExit(5000);}}
             }
         }
