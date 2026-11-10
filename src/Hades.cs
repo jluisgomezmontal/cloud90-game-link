@@ -179,6 +179,11 @@ namespace Cloud90.GameLink
             }
         }
 
+        internal Item[] LocalPending()
+        {
+            lock(gate) { return disposed || paused || !connected ? new Item[0] : items.ToArray(); }
+        }
+
         public Item Take(string id)
         {
             lock (gate)
