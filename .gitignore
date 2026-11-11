@@ -1,4 +1,6 @@
 dist/
+mod/celeste/bin/
+mod/celeste/obj/
 node_modules/
 *.tmp
 mod/cuphead/dist/

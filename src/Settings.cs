@@ -23,6 +23,7 @@ namespace Cloud90.GameLink
         public string CupheadDir = "";
         public string GtaSaDir = "";
         public string Rdr2Dir = "";
+        public string CelesteDir = "";
         public string SmwDir = "";
         public string Pcsx2Dir = "";
         public string SelectedGame = "mslugx";
@@ -71,6 +72,7 @@ namespace Cloud90.GameLink
                 else if (key == "ctr_dir") s.CtrDir = value;
                 else if (key == "cuphead_dir") s.CupheadDir = value;
                 else if (key == "smw_dir") s.SmwDir = value;
+                else if (key == "celeste_dir") s.CelesteDir = value;
                 else if (key == "rdr2_dir") s.Rdr2Dir = value;
                 else if (key == "gtasa_dir") s.GtaSaDir = value;
                 else if (key == "pcsx2_dir") s.Pcsx2Dir = value;
@@ -113,6 +115,7 @@ namespace Cloud90.GameLink
             if (CtrDir.Length > 0) lines.Add("ctr_dir=" + CtrDir);
             if (CupheadDir.Length > 0) lines.Add("cuphead_dir=" + CupheadDir);
             if (SmwDir.Length > 0) lines.Add("smw_dir=" + SmwDir);
+            if (CelesteDir.Length > 0) lines.Add("celeste_dir=" + CelesteDir);
             if (Rdr2Dir.Length > 0) lines.Add("rdr2_dir=" + Rdr2Dir);
             if (GtaSaDir.Length > 0) lines.Add("gtasa_dir=" + GtaSaDir);
             if (Pcsx2Dir.Length > 0) lines.Add("pcsx2_dir=" + Pcsx2Dir);

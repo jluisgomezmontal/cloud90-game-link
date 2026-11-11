@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$BaseExecutable, [string]$Rdr2SdkPath)
+param([Parameter(Mandatory=$true)][string]$BaseExecutable, [string]$Rdr2SdkPath, [string]$CelesteEverestLib, [string]$Dotnet = 'dotnet')
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
 $base = [Reflection.Assembly]::LoadFile((Resolve-Path -LiteralPath $BaseExecutable).Path)
@@ -23,6 +23,11 @@ $outputName = 'Cloud90GameLink-GowPreview.exe'
 if ($Rdr2SdkPath) {
     & (Join-Path $root 'mod\rdr2\build.ps1') -SdkPath $Rdr2SdkPath
     $resources['Cloud90.RDR2.Diagnostics.asi'] = Join-Path $root 'mod\rdr2\dist\Cloud90.RDR2.Diagnostics.asi'
+    $outputName = 'Cloud90GameLink.exe'
+}
+if ($CelesteEverestLib) {
+    & (Join-Path $root 'mod\celeste\build.ps1') -EverestLib $CelesteEverestLib -Dotnet $Dotnet
+    $resources['Cloud90.Celeste.zip'] = Join-Path $root 'mod\celeste\dist\Cloud90.Celeste.zip'
     $outputName = 'Cloud90GameLink.exe'
 }
 $argsList = @('/nologo','/target:winexe','/platform:anycpu','/optimize+',('/out:'+(Join-Path $root ('dist\' + $outputName))),('/win32icon:'+(Join-Path $root 'assets\cloud90.ico')),('/win32manifest:'+(Join-Path $root 'app.manifest')),'/r:System.Web.Extensions.dll','/r:System.Windows.Forms.dll','/r:System.Drawing.dll','/r:System.Security.dll','/r:System.Core.dll','/r:System.IO.Compression.dll','/r:System.IO.Compression.FileSystem.dll')

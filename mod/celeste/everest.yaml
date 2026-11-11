@@ -1,0 +1,6 @@
+- Name: Cloud90GameLink
+  Version: 1.0.0
+  DLL: Cloud90.Celeste.dll
+  Dependencies:
+    - Name: Everest
+      Version: 1.6662.0
