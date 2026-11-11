@@ -432,6 +432,11 @@ namespace Cloud90.GameLink
                 new GamePanel(this, new MslugxHost()),
                 new GamePanel(this, new MvscHost()),
             };
+            if (Rdr2Host.Packaged)
+            {
+                Array.Resize(ref panels, panels.Length + 1);
+                panels[panels.Length - 1] = new GamePanel(this, new Rdr2Host());
+            }
             navigation = new GameNavigationButton[panels.Length];
             for (int i = 0; i < panels.Length; i++)
             {
