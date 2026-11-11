@@ -2,6 +2,8 @@
 
 Estado: plan, sin implementación ni efectos nativos validados para II. Se amplía la rama `feat/god-of-war-cloud90` usada para I; no crear una rama o PR independiente por juego. Un PR combinado por repositorio: Game Link, backend y frontend. No fusionar ni desplegar durante esta fase.
 
+Actualización: perfil II, identidad/firma, contexto, medidores de vida/magia/furia, escudo, catálogo, presets, permisos, instrucciones y portada PNG implementados en esta rama. El host es compartido y los datos son independientes. Mejoras, estados temporales y enemigos siguen pendientes. Ver `GOD-OF-WAR-II-VALIDATION.md` para evidencia y límites. El alcance original siguiente no afirma que todas sus fases estén terminadas.
+
 ## Evidencia local
 
 - Imagen del usuario: `D:\PS2\Games\God of War II (USA).iso`, 8 533 671 936 bytes.

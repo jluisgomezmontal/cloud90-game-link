@@ -14,3 +14,7 @@ All assets are embedded during compilation. No downloads are required at runtime
 God of War I uses `gow1.png`, converted without cropping from the existing
 frontend `public/juegos/gow1.webp` (960 × 631). PNG preserves the original
 composition; the Game Link banner and selector both find it through `Art.gow1.png`.
+
+God of War II uses `gow2.png`, converted without cropping from the existing
+frontend `public/juegos/gow2.webp` (960 × 540). Its selector and banner load
+the same composition through `Art.gow2.png`.

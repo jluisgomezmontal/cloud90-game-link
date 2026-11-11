@@ -52,7 +52,7 @@ try {
 
     # 3. Protocol.
     if ($WsModule) { $env:WS_MODULE = $WsModule }
-    foreach ($mode in @('normal', 'oversize', 'ctr', 'cuphead', 'smw', 'mvsc', 'mslugx')) {
+    foreach ($mode in @('normal', 'oversize', 'ctr', 'cuphead', 'smw', 'mvsc', 'mslugx', 'gow2')) {
         $listener = New-Object Net.Sockets.TcpListener([Net.IPAddress]::Loopback, 0)
         $listener.Start()
         $port = $listener.LocalEndpoint.Port
@@ -69,6 +69,7 @@ try {
             }
             if ($mode -eq 'normal') { $failed += $t::Protocol("http://127.0.0.1:$port", (Join-Path $work 'inbox2.lua')) }
             elseif ($mode -eq 'ctr') { $failed += $t::CtrProtocol("http://127.0.0.1:$port", (Join-Path $work 'ctr-protocol.json')) }
+            elseif ($mode -eq 'gow2') { $failed += $t::GowProtocol("http://127.0.0.1:$port", (Join-Path $work 'gow2-protocol.json')) }
             elseif ($mode -eq 'mslugx') { $failed += $t::MslugxProtocol("http://127.0.0.1:$port", (Join-Path $work 'mslugx-protocol.json')) }
             elseif ($mode -eq 'mvsc') { $failed += $t::MvscProtocol("http://127.0.0.1:$port", (Join-Path $work 'mvsc-protocol.json')) }
             elseif ($mode -eq 'smw') { $failed += $t::SmwProtocol("http://127.0.0.1:$port", (Join-Path $work 'smw-protocol.json')) }
@@ -77,12 +78,13 @@ try {
             $server.WaitForExit(5000) | Out-Null
             $got = Get-Content -LiteralPath $log -Encoding UTF8
             $got | ForEach-Object { "  server: $_" }
-            $helloGame = if ($mode -eq 'ctr') { 'ctrnf' } elseif ($mode -eq 'cuphead') { 'cuphead' } elseif ($mode -eq 'smw') { 'smw' } elseif ($mode -eq 'mvsc') { 'mvsc' } elseif ($mode -eq 'mslugx') { 'mslugx' } else { 'kof2002' }
-            if (-not ($got -match ('"type":"hello","game":"' + $helloGame + '","version":"cloud90-game-link-1.7.0"'))) { "FAIL: no hello"; $failed++ }
+            $helloGame = if ($mode -eq 'ctr') { 'ctrnf' } elseif ($mode -eq 'cuphead') { 'cuphead' } elseif ($mode -eq 'smw') { 'smw' } elseif ($mode -eq 'mvsc') { 'mvsc' } elseif ($mode -eq 'mslugx') { 'mslugx' } elseif ($mode -eq 'gow2') { 'gow2' } else { 'kof2002' }
+            if (-not ($got -match ('"type":"hello","game":"' + $helloGame + '","version":"cloud90-game-link-1.8.0-dev"'))) { "FAIL: no hello"; $failed++ }
             if ($mode -eq 'ctr' -and -not ($got -match '"type":"ack","id":"e-42","ok":true')) { "FAIL: no CTR ack"; $failed++ }
             if ($mode -eq 'cuphead' -and -not ($got -match '"type":"ack","id":"e-42","ok":true')) { "FAIL: no Cuphead ack"; $failed++ }
+            if ($mode -eq 'gow2' -and -not ($got -match '"type":"ack","id":"e-42","ok":true')) { "FAIL: no GoW II ack"; $failed++ }
             if ($mode -eq 'smw' -and -not ($got -match '"type":"ack","id":"e-42","ok":true')) { "FAIL: no SMW ack"; $failed++ }
-            if (($mode -eq 'cuphead' -or $mode -eq 'ctr' -or $mode -eq 'smw' -or $mode -eq 'mvsc' -or $mode -eq 'mslugx') -and -not ($got -match '"type":"ack","id":"e-stale","ok":false,"reason":"intento anterior"')) { "FAIL: old-attempt Cuphead command was not rejected"; $failed++ }
+            if (($mode -eq 'cuphead' -or $mode -eq 'ctr' -or $mode -eq 'smw' -or $mode -eq 'mvsc' -or $mode -eq 'mslugx' -or $mode -eq 'gow2') -and -not ($got -match '"type":"ack","id":"e-stale","ok":false,"reason":"intento anterior"')) { "FAIL: old-attempt Cuphead command was not rejected"; $failed++ }
             if ($mode -eq 'normal' -and -not ($got -match '"type":"ack","id":"e-42","ok":false,"reason":"escudo activo"')) { "FAIL: no ack"; $failed++ }
         }
         finally {

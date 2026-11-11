@@ -6,8 +6,12 @@ using System.Text;
 
 namespace Cloud90.GameLink
 {
+    internal interface IPineMemory {
+        uint Read32(uint address);
+        float ReadFloat(uint address);
+    }
     // PCSX2's local IPC protocol. Addresses are EE addresses, never host pointers.
-    internal sealed class Pine : IDisposable
+    internal sealed class Pine : IDisposable, IPineMemory
     {
         readonly TcpClient client;
         readonly NetworkStream stream;

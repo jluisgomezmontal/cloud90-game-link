@@ -1,5 +1,11 @@
 # Cloud90 Game Link
 
+Experimental branch: God of War I (SCUS-97399 / D6385328) and II
+(SCUS-97481 / 2F123FD8) have independent PCSX2 profiles and tokens. Backend
+and client require `CLOUD90_GOW_EXPERIMENTAL=1`; use `Start-GodOfWarPreview.ps1`
+for the local client and enable PCSX2 PINE slot 28011. See the two
+`GOD-OF-WAR*-VALIDATION.md` documents for candidate effects and limits.
+
 Lets a live stream on [Cloud90](https://cloud90.dev) change PC games: viewers'
 gifts heal you, spawn enemies, invert your controls, fill your power gauge…
 One small Windows app for every PC game Cloud90 supports, with an illustrated

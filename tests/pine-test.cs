@@ -5,6 +5,32 @@ using System.Net.Sockets;
 using System.Threading;
 namespace Cloud90.GameLink {
     class PineTest {
+        sealed class FakeMemory : IPineMemory {
+            internal readonly System.Collections.Generic.Dictionary<uint,uint> Words=new System.Collections.Generic.Dictionary<uint,uint>();
+            public uint Read32(uint address) {if(!Words.ContainsKey(address))throw new Exception("Unexpected address "+address.ToString("X8"));return Words[address];}
+            public float ReadFloat(uint address) {return BitConverter.ToSingle(BitConverter.GetBytes(Read32(address)),0);}
+            internal void Float(uint address,float value) {Words[address]=BitConverter.ToUInt32(BitConverter.GetBytes(value),0);}
+        }
+        static void Profiles() {
+            var one=new GodOfWarProfile("gow1");var two=new GodOfWarProfile("gow2");
+            Assert(two.Identity("SCUS-97481","2f123fd8"),"II identity");
+            Assert(!two.Identity("SCUS-97399","D6385328"),"cross-game identity");
+            Assert(two.PlayerAddress!=one.PlayerAddress&&two.MagicAddress!=one.MagicAddress,"separate profiles");
+            var m=new FakeMemory();m.Words[two.PlayerAddress]=0x958660;m.Words[two.ModeAddress]=11;m.Words[0x958660]=0x958160;m.Words[0x958164]=two.Vtable;m.Float(0x9582d8,200);m.Float(0x9582dc,200);
+            m.Words[0x001bc0dc]=0x8c428734;m.Words[0x00213760]=0xc4400178;m.Words[0x001d9250]=0x90655867;
+            uint player,character;
+            Assert(two.Character(m,out player,out character)&&character==0x958160,"II gameplay");
+            m.Words[0x001d9250]=0;Assert(!two.Character(m,out player,out character),"modified program rejected");m.Words[0x001d9250]=0x90655867;
+            m.Words[two.ModeAddress]=3;Assert(!two.Character(m,out player,out character),"II intro rejected");m.Words[two.ModeAddress]=11;
+            m.Words[0x958164]=one.Vtable;Assert(!two.Character(m,out player,out character),"wrong vtable");m.Words[0x958164]=two.Vtable;
+            m.Words[0x335864]=5u<<24;m.Words[0x2d870c]=0x680000;
+            int displacement=0x67ff00-0x680004;m.Words[0x680004]=unchecked((uint)(displacement<<12));m.Words[0x67ff08]=200u<<16;
+            Assert(two.MagicMaximum(m)==200,"signed relative max table and upper halfword");
+            m.Words[0x335864]=0;Assert(two.MagicMaximum(m)==0,"locked magic");m.Words[0x335864]=5u<<24;
+            m.Float(two.RageAddress,100);Assert(Array.IndexOf(two.Capabilities(m),"magic_max")>=0,"II magic capability");
+            Assert(Array.IndexOf(two.Capabilities(m),"levels_max")<0,"II unmapped upgrades rejected");
+            m.Words[0x67ff08]=65535u<<16;Assert(two.MagicMaximum(m)==0,"negative maximum rejected");
+        }
         static void Assert(bool condition,string message) {if(!condition)throw new Exception(message);}
         static byte[] Exact(NetworkStream s,int n) {var b=new byte[n];int done=0;while(done<n){int count=s.Read(b,done,n-done);if(count==0)throw new EndOfStreamException();done+=count;}return b;}
         static void Case(byte[] reply,Action<Pine> test) {
@@ -16,6 +42,7 @@ namespace Cloud90.GameLink {
         static void Rejected(Action action) {bool rejected=false;try{action();}catch(IOException){rejected=true;}Assert(rejected,"accepted invalid response");}
         static int Main() {
             try {
+                Profiles();
                 Case(new byte[]{9,0,0,0,0,0,0,0,0},p=>Assert(p.Status()==0,"status"));
                 Case(new byte[]{9,0,0,0,0,0,0,200,66},p=>Assert(p.ReadFloat(0x100000)==100,"float"));
                 Case(new byte[]{5,0,0,0,255},p=>Rejected(()=>p.Status()));

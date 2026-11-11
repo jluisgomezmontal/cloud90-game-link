@@ -10,6 +10,7 @@ namespace Cloud90.GameLink
     internal sealed class GodOfWarHost : GameHost
     {
         readonly string id;
+        readonly GodOfWarProfile profile;
         Process process;
         Inbox inbox;
         Link link;
@@ -20,7 +21,7 @@ namespace Cloud90.GameLink
         uint lastCharacter;
         DateTime shieldUntil;
         readonly Dictionary<string,string> results=new Dictionary<string,string>();
-        public GodOfWarHost(string id) { this.id=id; }
+        public GodOfWarHost(string id) { this.id=id;profile=new GodOfWarProfile(id); }
         public override string Id { get {return id;} }
         public override string Title { get {return id=="gow1"?"God of War I":"God of War II";} }
         public override string FolderButton { get {return "Carpeta de PCSX2…";} }
@@ -44,7 +45,6 @@ namespace Cloud90.GameLink
         {
             if(Environment.GetEnvironmentVariable("CLOUD90_GOW_EXPERIMENTAL")!="1")throw new InvalidOperationException("Perfil experimental sin validación completa. Para pruebas locales establece CLOUD90_GOW_EXPERIMENTAL=1 antes de abrir Game Link.");
             if(AnotherRunning())throw new InvalidOperationException("Cierra PCSX2 primero");
-            if(id=="gow2")throw new InvalidOperationException("God of War II está pendiente de perfil y validación. No se aplicarán direcciones de God of War I.");
             using(var dialog=new OpenFileDialog {Title="Selecciona tu imagen de "+Title,Filter="Imágenes PS2|*.iso;*.chd",CheckFileExists=true}) {
                 if(dialog.ShowDialog()!=DialogResult.OK)throw new OperationCanceledException("No se seleccionó el juego");
                 link=connection;identity="";lastCharacter=0;epoch="";shieldUntil=DateTime.MinValue;results.Clear();
@@ -67,18 +67,13 @@ namespace Cloud90.GameLink
                 using(var pine=new Pine(28011)) {
                     if(pine.Status()!=0) {Block("PCSX2 en pausa o sin juego");return;}
                     string serial=pine.Text(12),crc=pine.Text(13);
-                    if(serial!="SCUS-97399"||!string.Equals(crc,"D6385328",StringComparison.OrdinalIgnoreCase)) {Block("Revisión no compatible: se requiere SCUS-97399 / D6385328");return;}
-                    // Narrow profile: normal play, verified hero pool/vtable and finite health.
-                    uint player=pine.Read32(0x0029CD58);
-                    if(pine.Read32(0x0029E560)!=11||player<0x100000||player>0x01fffffc) {Block("Esperando una partida controlable");return;}
-                    uint character=pine.Read32(player);
-                    if(character<0x00795800||character>=0x0079b800||pine.Read32(character+4)!=0x002ba528) {Block("Kratos no está disponible");return;}
-                    float health=pine.ReadFloat(character+0x178),max=pine.ReadFloat(character+0x17c);
-                    if(!ValidMeter(health,max)) {Block("Kratos muerto o medidor no compatible");return;}
+                    if(!profile.Identity(serial,crc)) {Block("Revisión no compatible: se requiere "+profile.Serial+" / "+profile.Crc);return;}
+                    uint player,character;
+                    if(!profile.Character(pine,out player,out character)) {Block("Esperando una partida controlable con Kratos vivo");return;}
                     if(epoch==""||lastCharacter!=character||identity!=serial+crc) {epoch=Guid.NewGuid().ToString("N");shieldUntil=DateTime.MinValue;}
                     lastCharacter=character;identity=serial+crc;
-                    link.SetContext(epoch);link.SetCapabilities(GodOfWarEffects.Capabilities);link.OnModLine("state 1");
-                    Message("God of War I USA conectado · recursos y mejoras experimentales. No cargar estados durante la conexión.");
+                    link.SetContext(epoch);link.SetCapabilities(profile.Capabilities(pine));link.OnModLine("state 1");
+                    Message(Title+" USA conectado · recursos y mejoras experimentales. No cargar estados durante la conexión.");
                     foreach(var item in inbox.LocalPending()) {
                         string cached;
                         if(results.TryGetValue(item.Id,out cached)) {link.OnModLine("ack "+item.Id+" "+cached);continue;}
@@ -88,22 +83,21 @@ namespace Cloud90.GameLink
                         string result="efecto no compatible";
                         if(item.Epoch!=epoch||(DateTime.UtcNow-item.Sent).TotalSeconds>=2)result="comando vencido";
                         else if(link.Paused)result="en pausa";
-                        else if(pine.Status()!=0||pine.Read32(0x0029CD58)!=player||pine.Read32(0x0029E560)!=11)result="partida cambió";
+                        else if(pine.Status()!=0||pine.Read32(profile.PlayerAddress)!=player||pine.Read32(profile.ModeAddress)!=11||pine.Read32(player)!=character||pine.Read32(character+4)!=profile.Vtable)result="partida cambió";
                         else if(GodOfWarEffects.Policy(item.Effect,item.Safe,item.AllowDestructive,DateTime.UtcNow<shieldUntil)!=null)result=GodOfWarEffects.Policy(item.Effect,item.Safe,item.AllowDestructive,DateTime.UtcNow<shieldUntil);
                         else if(item.Effect=="shield") {shieldUntil=DateTime.UtcNow.AddMilliseconds(Math.Max(1000,Math.Min(30000,item.Ms)));result="ok";}
                         else if(item.Effect=="heal"||item.Effect=="damage"||item.Effect=="heal_max"||item.Effect=="kill") {
                             float current=pine.ReadFloat(character+0x178),maximum=pine.ReadFloat(character+0x17c);
                             if(ValidMeter(current,maximum))result=GodOfWarEffects.SetFloat(pine,character+0x178,GodOfWarEffects.HealthTarget(item.Effect,current,maximum));
                         } else if(item.Effect=="magic_add"||item.Effect=="magic_remove"||item.Effect=="magic_max"||item.Effect=="magic_empty") {
-                            int level=(int)((pine.Read32(0x00302D34)>>24)&255);
-                            if(level>=1&&level<=5) {
-                                float maximum=pine.ReadFloat(0x003028F4+(uint)level*4),current=pine.ReadFloat(0x00302D1C);
-                                if(!float.IsNaN(current)&&current>=0&&current<=maximum&&maximum>=100&&maximum<=200)result=GodOfWarEffects.SetFloat(pine,0x00302D1C,GodOfWarEffects.MagicTarget(item.Effect,current,maximum));
-                            } else result="magia no desbloqueada";
+                            float maximum=profile.MagicMaximum(pine),current=pine.ReadFloat(profile.MagicAddress);
+                            if(maximum>0&&!float.IsNaN(current)&&current>=0&&current<=maximum)result=GodOfWarEffects.SetFloat(pine,profile.MagicAddress,GodOfWarEffects.MagicTarget(item.Effect,current,maximum));
+                            else result="magia no disponible";
                         } else if(item.Effect=="rage_max"||item.Effect=="rage_empty") {
-                            float current=pine.ReadFloat(0x00302D20);
-                            if(!float.IsNaN(current)&&current>=0&&current<=100)result=GodOfWarEffects.SetFloat(pine,0x00302D20,item.Effect=="rage_max"?100:0);
+                            float current=pine.ReadFloat(profile.RageAddress);
+                            if(!float.IsNaN(current)&&current>=0&&current<=100)result=GodOfWarEffects.SetFloat(pine,profile.RageAddress,item.Effect=="rage_max"?100:0);
                         } else if(item.Effect=="blades_min"||item.Effect=="blades_max"||item.Effect=="levels_min"||item.Effect=="levels_max") {
+                            if(profile.IsTwo) {results[item.Id]="mejoras de II no compatibles";link.OnModLine("ack "+item.Id+" "+results[item.Id]);continue;}
                             var targets=GodOfWarEffects.UpgradeTargets(item.Effect);
                             bool valid=true;foreach(var target in targets)if(pine.Read32(target.Key)>(target.Key==0x0076D808?5u:2u))valid=false;
                             if(valid) {
