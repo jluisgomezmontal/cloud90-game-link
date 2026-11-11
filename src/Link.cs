@@ -58,11 +58,11 @@ namespace Cloud90.GameLink
         {
             if (inbox != null && !ReferenceEquals(inbox, value)) inbox.Dispose();
             inbox = value; inbox.SetPaused(paused); inbox.Connected(welcomed);
-            if (Game == "cuphead" || Game == "ctrnf" || (Game == "gtasa" || (Game == "smw" || (Game == "mvsc" || (Game == "mslugx" || Game == "gow1" || Game == "gow2"))))) { inbox.SetContext(gameContext); inbox.SetPolicy(noDeath, allowDestructive); }
+            if (Game == "cuphead" || Game == "ctrnf" || (Game == "gtasa" || (Game == "smw" || (Game == "mvsc" || (Game == "mslugx" || Game == "gow1" || Game == "gow2" || Game == "rdr2"))))) { inbox.SetContext(gameContext); inbox.SetPolicy(noDeath, allowDestructive); }
         }
         public void SetCapabilities(string[] value)
         {
-            if (Game != "cuphead" && Game != "ctrnf" && Game != "gtasa" && Game != "smw" && Game != "mvsc" && Game != "mslugx" && Game != "gow1" && Game != "gow2") return;
+            if (Game != "cuphead" && Game != "ctrnf" && Game != "gtasa" && Game != "smw" && Game != "mvsc" && Game != "mslugx" && Game != "gow1" && Game != "gow2" && Game != "rdr2") return;
             string[] next = value ?? new string[0];
             if (capabilities != null && string.Join(",", capabilities) == string.Join(",", next)) return;
             capabilities = next;
@@ -70,14 +70,14 @@ namespace Cloud90.GameLink
         }
         void ApplyPolicy(Dictionary<string, object> message)
         {
-            if (Game != "cuphead" && Game != "ctrnf" && Game != "gtasa" && Game != "smw" && Game != "mvsc" && Game != "mslugx" && Game != "gow1" && Game != "gow2") return;
+            if (Game != "cuphead" && Game != "ctrnf" && Game != "gtasa" && Game != "smw" && Game != "mvsc" && Game != "mslugx" && Game != "gow1" && Game != "gow2" && Game != "rdr2") return;
             noDeath = !message.ContainsKey("noDeath") || !(message["noDeath"] is bool) || (bool)message["noDeath"];
             allowDestructive = message.ContainsKey("allowDestructive") && message["allowDestructive"] is bool && (bool)message["allowDestructive"];
             if (inbox != null) inbox.SetPolicy(noDeath, allowDestructive);
         }
         public void SetContext(string epoch)
         {
-            if ((Game != "cuphead" && Game != "ctrnf" && Game != "gtasa" && Game != "smw" && Game != "mvsc" && Game != "mslugx" && Game != "gow1" && Game != "gow2") || epoch == gameContext) return;
+            if ((Game != "cuphead" && Game != "ctrnf" && Game != "gtasa" && Game != "smw" && Game != "mvsc" && Game != "mslugx" && Game != "gow1" && Game != "gow2" && Game != "rdr2") || epoch == gameContext) return;
             gameContext = epoch ?? "";
             if (inbox != null) inbox.SetContext(gameContext);
             Fire(SendState());
@@ -161,7 +161,7 @@ namespace Cloud90.GameLink
                         socket = ws;
                     }
                     connectedAt = DateTime.UtcNow;
-                    await Send(new Dictionary<string, object> { { "type", "hello" }, { "game", Game }, { "version", Version } });
+                    await Send(new Dictionary<string, object> { { "type", "hello" }, { "game", Game }, { "version", Game == "rdr2" ? "cloud90-game-link-rdr2-1" : Version } });
                     pinger = Ping(ws, connection.Token);
                     await Receive(ws, connection.Token);
                     if (ws.CloseStatus.HasValue && ws.CloseStatus.Value != WebSocketCloseStatus.Empty)
@@ -224,7 +224,7 @@ namespace Cloud90.GameLink
                     // Effects the game didn't answer: refused, as Nebula would.
                     if (inbox != null)
                         foreach (Inbox.Item old in inbox.Expire(AckTimeout))
-                            await Ack(old.Id, false, Game == "gow1" || Game == "gow2" ? "resultado incierto; no se recibió confirmación" : "no disponible ahora");
+                            await Ack(old.Id, false, Game == "gow1" || Game == "gow2" || Game == "rdr2" ? "resultado incierto; no se recibió confirmación" : "no disponible ahora");
                 }
             }
             catch (Exception) { }
@@ -280,7 +280,7 @@ namespace Cloud90.GameLink
                 string effect = Str(msg, "effect");
                 string reason = null;
                 if (!EffectName.IsMatch(effect)) reason = "efecto desconocido";
-                else if ((Game == "cuphead" || (Game == "gtasa" || (Game == "smw" || (Game == "mvsc" || (Game == "mslugx" || Game == "gow1" || Game == "gow2")))) || (Game == "ctrnf" && capabilities != null && Array.IndexOf(capabilities, "fall_void") >= 0)) && (string.IsNullOrEmpty(gameContext) || Str(msg, "epoch") != gameContext)) reason = "intento anterior";
+                else if ((Game == "cuphead" || (Game == "gtasa" || (Game == "smw" || (Game == "mvsc" || (Game == "mslugx" || Game == "gow1" || Game == "gow2" || Game == "rdr2")))) || (Game == "ctrnf" && capabilities != null && Array.IndexOf(capabilities, "fall_void") >= 0)) && (string.IsNullOrEmpty(gameContext) || Str(msg, "epoch") != gameContext)) reason = "intento anterior";
                 else if (paused) reason = "en pausa";
                 else if (inbox == null || !inPlay) reason = "no disponible ahora";
                 if (reason != null)
@@ -293,7 +293,7 @@ namespace Cloud90.GameLink
                 Inbox.Item item = new Inbox.Item();
                 item.Id = id;
                 item.Effect = effect;
-                if (Game == "cuphead" || Game == "ctrnf" || (Game == "gtasa" || (Game == "smw" || (Game == "mvsc" || (Game == "mslugx" || Game == "gow1" || Game == "gow2"))))) item.Epoch = Str(msg, "epoch");
+                if (Game == "cuphead" || Game == "ctrnf" || (Game == "gtasa" || (Game == "smw" || (Game == "mvsc" || (Game == "mslugx" || Game == "gow1" || Game == "gow2" || Game == "rdr2"))))) item.Epoch = Str(msg, "epoch");
                 item.Ms = Math.Max(0, Math.Min(ms, 120000));
                 item.By = Str(msg, "by");
                 item.Safe = msg.ContainsKey("safe") && msg["safe"] is bool && (bool)msg["safe"];
@@ -321,7 +321,7 @@ namespace Cloud90.GameLink
                 if (space <= 0) return;
                 string id = rest.Substring(0, space);
                 string result = rest.Substring(space + 1).Trim();
-                if (inbox != null && inbox.Take(id) == null && (Game == "ctrnf" || Game == "cuphead" || (Game == "gtasa" || (Game == "smw" || (Game == "mvsc" || (Game == "mslugx" || Game == "gow1" || Game == "gow2")))))) return;
+                if (inbox != null && inbox.Take(id) == null && (Game == "ctrnf" || Game == "cuphead" || (Game == "gtasa" || (Game == "smw" || (Game == "mvsc" || (Game == "mslugx" || Game == "gow1" || Game == "gow2" || Game == "rdr2")))))) return;
                 bool ok = result == "ok";
                 Log.Write(title + ": efecto " + id + ": " + result);
                 Fire(Ack(id, ok, ok ? null : result));
@@ -383,8 +383,8 @@ namespace Cloud90.GameLink
         Task SendState()
         {
             var message = new Dictionary<string, object> { { "type", "state" }, { "paused", paused }, { "inPlay", inPlay } };
-            if (Game == "cuphead" || Game == "ctrnf" || (Game == "gtasa" || (Game == "smw" || (Game == "mvsc" || (Game == "mslugx" || Game == "gow1" || Game == "gow2"))))) message["epoch"] = gameContext;
-            if ((Game == "cuphead" || Game == "ctrnf" || (Game == "gtasa" || (Game == "smw" || (Game == "mvsc" || (Game == "mslugx" || Game == "gow1" || Game == "gow2"))))) && capabilities != null) message["capabilities"] = capabilities;
+            if (Game == "cuphead" || Game == "ctrnf" || (Game == "gtasa" || (Game == "smw" || (Game == "mvsc" || (Game == "mslugx" || Game == "gow1" || Game == "gow2" || Game == "rdr2"))))) message["epoch"] = gameContext;
+            if ((Game == "cuphead" || Game == "ctrnf" || (Game == "gtasa" || (Game == "smw" || (Game == "mvsc" || (Game == "mslugx" || Game == "gow1" || Game == "gow2" || Game == "rdr2"))))) && capabilities != null) message["capabilities"] = capabilities;
             return Send(message);
         }
 

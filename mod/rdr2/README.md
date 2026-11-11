@@ -12,6 +12,21 @@ Extrae el SDK de [Script Hook RDR2](https://dev-c.com/rdr2/scripthookrdr2/) y ej
 
 El resultado es `mod\rdr2\dist\Cloud90.RDR2.Diagnostics.asi`.
 
+Para compilar el cliente de prueba con las pestañas de RDR2 y God of War, usa el ejecutable publicado de Game Link 1.7.0-rc.1 como base de los módulos existentes.
+
+```powershell
+.\build-gow-preview.ps1 -BaseExecutable 'C:\ruta\Cloud90GameLink.exe' -Rdr2SdkPath 'C:\ruta\al\sdk'
+```
+
+## Probar con Cloud90 Live
+
+1. Instala los componentes de Script Hook RDR2 compatibles y abre la compilación de Game Link para RDR2. Game Link instala únicamente su plugin propio.
+2. Selecciona **Red Dead Redemption 2** en Game Link. Genera el token desde su ficha en Cloud90 Live y pégalo en Game Link. Pulsa **Abrir juego** y carga una partida de Historia en exploración libre.
+3. Prueba Tónico de emergencia con la salud parcialmente vacía. Para probar Emboscada, desactiva Modo sin morir, elige un enemigo y verifica su aparición y combate. Para usarlo con regalos, activa Modo troll y guarda una regla con el regalo y el enemigo elegidos.
+4. Prueba **Pausar efectos** desde Game Link o Cloud90 Live. El plugin cancela el escudo y limpia los enemigos de la sesión cuando vuelve a tener control. La conexión se suspende al salir de exploración libre.
+
+Los atajos de la vista previa local quedan desactivados en una sesión iniciada por Game Link.
+
 ## Probar en modo Historia
 
 1. Termina la instalación en Steam, abre el juego y completa el primer inicio con Rockstar Games Launcher. En Steam, usa **Propiedades → Archivos instalados → Explorar** y anota la versión de `RDR2.exe`.
@@ -61,7 +76,7 @@ La emboscada busca un punto con terreno cargado a 12–26 metros del jugador. Ti
 
 Revisa las entradas `effect=bandit_ambush` del registro. `spawned` confirma la creación del NPC. `combat_confirmed` confirma que el juego detectó combate con el jugador. Prueba cada modelo en terreno abierto, revisa que el vampiro use la daga y verifica la limpieza al pausar, morir o entrar en una misión. El efecto reutiliza el modelo del vampiro y le asigna combate local.
 
-Estos atajos son locales. Quita el archivo `enable-preview.txt` y reinicia el juego para volver al diagnóstico de solo lectura. El enlace con reglas de regalos, la tormenta y el caballo de rescate siguen pendientes.
+Estos atajos son locales. Quita el archivo `enable-preview.txt` y reinicia el juego para volver al diagnóstico de solo lectura. La tormenta y el caballo de rescate siguen pendientes.
 
 ## Referencias
 

@@ -10,7 +10,11 @@
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
 #include <string_view>
+#include <unordered_set>
+
+#include "../gtasa/vendor/json.hpp"
 
 namespace {
 // Native names, signatures and hashes from alloc8or's RDR3 native database.
@@ -450,6 +454,173 @@ EffectResult ApplyEffect(Effect effect, const Sample& sample, ULONGLONG now, ULO
     return {"unknown_effect"};
 }
 
+using Json = nlohmann::json;
+
+class LiveBridge {
+    std::filesystem::path directory;
+    std::string session, epoch, ambushId;
+    std::unordered_set<std::string> seen;
+    Json acks = Json::array();
+    unsigned generation = 0;
+    int lastPed = 0;
+    ULONGLONG nextPoll = 0, shieldUntil = 0;
+    ULONGLONG ambushExpires = 0;
+    std::array<ULONGLONG, PreviewEffects.size()> availableAt{};
+    Ambush ambush;
+
+    static bool ValidId(const std::string& id) {
+        return !id.empty() && id.size() <= 80 && id.find_first_not_of(
+            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-") == std::string::npos;
+    }
+
+    static std::string ReadFile(const std::filesystem::path& path, DWORD limit) {
+        HANDLE file = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE |
+                                  FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, 0, nullptr);
+        if (file == INVALID_HANDLE_VALUE) return {};
+        const DWORD size = GetFileSize(file, nullptr);
+        std::string data;
+        DWORD count = 0;
+        if (size <= limit) {
+            data.resize(size);
+            if (!::ReadFile(file, data.data(), size, &count, nullptr) || count != size) data.clear();
+        }
+        CloseHandle(file);
+        return data;
+    }
+
+    void WriteStatus(const Json& status) const {
+        const auto temp = directory / L"status.tmp";
+        const auto path = directory / L"status.json";
+        std::ofstream out(temp, std::ios::binary | std::ios::trunc);
+        out << status.dump();
+        out.close();
+        if (out) MoveFileExW(temp.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING);
+    }
+
+    void Ack(const std::string& id, const char* result) {
+        acks.push_back({{"id", id}, {"result", result}});
+        if (acks.size() > 100) acks.erase(acks.begin());
+    }
+
+    const char* Command(const Json& inbox, const Json& command, const std::string& id,
+                        const Sample& sample, ULONGLONG now, bool paused) {
+        if (sample.context != FreeRoam) return "fuera de exploración libre";
+        if (paused) return "pausado";
+        if (command.value("epoch", "") != epoch) return "intento anterior";
+        const auto expires = command.value("expiresMs", 0ULL);
+        if (expires <= now || expires - now > 10000) return "caducado";
+        const auto effect = command.value("effect", "");
+        const bool safe = inbox.value("noDeath", true) || command.value("safe", true);
+        if (effect == "bandit_ambush") {
+            if (safe) return "modo sin morir activo";
+            const auto arg = command.value("arg", "");
+            const auto choice = std::find_if(EnemyOptions.begin(), EnemyOptions.end(),
+                [&](const EnemyOption& option) { return arg == option.id; });
+            if (choice == EnemyOptions.end()) return "enemigo desconocido";
+            const char* result = ambush.Start(*choice, sample, now, now < shieldUntil);
+            if (std::string_view(result) != "loading_model") return result;
+            ambushId = id;
+            ambushExpires = expires;
+            return nullptr;
+        }
+        for (size_t index = 0; index < PreviewEffects.size(); ++index) {
+            const auto& option = PreviewEffects[index];
+            if (effect != option.name) continue;
+            if (option.extended && (!inbox.value("allowDestructive", false) ||
+                                    !command.value("allowDestructive", false))) return "permiso requerido";
+            if (option.sabotage && now < shieldUntil) return "bloqueado por escudo";
+            if (now < availableAt[index]) return "en enfriamiento";
+            const auto result = ApplyEffect(option.effect, sample, now, shieldUntil);
+            const std::string_view reason = result.reason;
+            if (reason == "applied" || reason == "unconfirmed") availableAt[index] = now + option.cooldown;
+            if (option.effect == Effect::Shield && reason == "applied") {
+                shieldUntil = now + std::clamp(command.value("ms", 15000), 1000, 15000);
+            }
+            if (reason == "applied") return "ok";
+            if (reason == "unconfirmed") return "resultado incierto; efecto sin confirmar";
+            return result.reason;
+        }
+        return "efecto desconocido";
+    }
+
+public:
+    explicit LiveBridge(const std::filesystem::path& root) {
+        if (root.empty()) return;
+        auto candidate = ReadFile(root / L"active-session.txt", 32);
+        if (candidate.size() != 32 || candidate.find_first_not_of("0123456789abcdef") != std::string::npos) return;
+        session = std::move(candidate);
+        directory = root / session;
+    }
+
+    bool Active() const { return !session.empty(); }
+
+    void Tick(const Sample& sample, ULONGLONG now) {
+        const bool playing = sample.context == FreeRoam;
+        const int ped = playing ? sample.ped : 0;
+        if (ped != lastPed || epoch.empty()) {
+            epoch = session + "_" + std::to_string(++generation);
+            shieldUntil = 0;
+            if (ambush.option) ambush.cleanup = true;
+            lastPed = ped;
+        }
+        if (now < nextPoll) return;
+        nextPoll = now + 100;
+        auto inbox = Json::parse(ReadFile(directory / L"inbox.json", 65536), nullptr, false);
+        bool fresh = false, paused = true;
+        try {
+            if (inbox.is_object() && inbox.value("session", "") == session) {
+                const auto heartbeat = inbox.value("heartbeatMs", 0ULL);
+                fresh = heartbeat && now >= heartbeat && now - heartbeat <= 2000;
+                paused = !fresh || inbox.value("paused", true);
+            }
+        } catch (const Json::exception&) {
+            fresh = false;
+            paused = true;
+        }
+        if (paused) {
+            shieldUntil = 0;
+            if (ambush.option) ambush.cleanup = true;
+        }
+        if (ambush.option && !ambushId.empty() && now >= ambushExpires) {
+            ambush.cleanup = true;
+            Ack(ambushId, ambush.enemy ? "resultado incierto; combate sin confirmar" : "caducado");
+            ambushId.clear();
+        }
+        if (ambush.option) {
+            const char* result = ambush.Tick(sample, now, now < shieldUntil);
+            if (result && !ambushId.empty() && std::string_view(result) != "spawned") {
+                const std::string_view outcome = result;
+                Ack(ambushId, outcome == "combat_confirmed" ? "ok" :
+                    outcome == "combat_unconfirmed" ? "resultado incierto; combate sin confirmar" : result);
+                ambushId.clear();
+            }
+        }
+        if (fresh && inbox.contains("effects") && inbox["effects"].is_array() && inbox["effects"].size() <= 20) {
+            for (const auto& command : inbox["effects"]) {
+                if (!command.is_object() || !command.contains("id") || !command["id"].is_string()) continue;
+                const std::string id = command["id"];
+                if (!ValidId(id) || seen.size() >= 100000 || !seen.insert(id).second) continue;
+                const char* result = "comando inválido";
+                try {
+                    result = Command(inbox, command, id, sample, now, paused);
+                } catch (const Json::exception&) {}
+                if (result) Ack(id, result);
+            }
+        }
+        Json capabilities = Json::array();
+        if (playing) {
+            for (const auto& effect : PreviewEffects) {
+                if (effect.effect == Effect::HorseStamina && !sample.mounted) continue;
+                capabilities.push_back(effect.name);
+            }
+            capabilities.push_back("bandit_ambush");
+        }
+        WriteStatus({{"session", session}, {"bridgeVersion", "cloud90-rdr2-1"},
+                     {"pid", GetCurrentProcessId()}, {"heartbeatMs", now}, {"epoch", epoch},
+                     {"inPlay", playing}, {"capabilities", capabilities}, {"acks", acks}});
+    }
+};
+
 bool IsKeyDown(int key) {
     return (GetAsyncKeyState(key) & 0x8000) != 0;
 }
@@ -501,7 +672,8 @@ void ScriptMain() {
     }
 
     const auto start = GetTickCount64();
-    const bool preview = canLog && HasMarker(logPath.parent_path(), L"enable-preview.txt");
+    LiveBridge live(logPath.parent_path());
+    const bool preview = !live.Active() && canLog && HasMarker(logPath.parent_path(), L"enable-preview.txt");
     const bool extendedPreview = preview && HasMarker(logPath.parent_path(), L"enable-extended-preview.txt");
     std::array<bool, PreviewEffects.size()> held{};
     std::array<ULONGLONG, PreviewEffects.size()> availableAt{};
@@ -568,7 +740,8 @@ void ScriptMain() {
                 }
             }
         }
-        scriptWait(preview ? 0 : 500);
+        if (live.Active()) live.Tick(sample, now);
+        scriptWait(preview ? 0 : live.Active() ? 50 : 500);
     }
 }
 }
