@@ -18,6 +18,9 @@ jobs:
       - run: npm ci
       - run: npm audit --audit-level high
       - run: npm test
+      - name: PCSX2 profiles, limits and PINE encoding
+        shell: powershell
+        run: .\tests\gow-test.ps1
       - name: Cuphead JSON test dependency
         shell: powershell
         run: |

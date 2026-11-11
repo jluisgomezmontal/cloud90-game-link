@@ -80,6 +80,7 @@ namespace Cloud90.GameLink
 
         static string Requirements(string game)
         {
+            if(game=="gow1"||game=="gow2")return "PCSX2 para Windows, BIOS y tu propia imagen del juego. Activa PINE en los ajustes avanzados (slot 28011). God of War I: SCUS-97399 / D6385328. Usa Start-GodOfWarPreview.ps1 para abrir la compilación experimental. God of War II: SCUS-97481 / 2F123FD8. Cada juego requiere su propio token.";
             switch (game)
             {
                 case "mslugx": return "Necesitas MAME 0.289 para Windows, tus ROMs mslugx.zip y neogeo.zip auditadas dentro de roms. Selecciona la carpeta con mame.exe e instala el plugin con MAME cerrado. Usa el token propio de Metal Slug X.";
@@ -96,6 +97,7 @@ namespace Cloud90.GameLink
         }
         static string Launch(string game)
         {
+            if(game=="gow1"||game=="gow2")return "Selecciona la carpeta de PCSX2, pega el token propio del juego y pulsa Abrir juego. Elige tu imagen ISO o CHD. Inicia una partida y mantén Game Link abierto. No uses estados guardados durante la conexión.";
             switch (game)
             {
                 case "mslugx": return "Abre Metal Slug X desde Game Link. Inserta crédito e inicia una partida individual como P1. F9 pausa efectos; Shift+F9 conserva la función original de MAME. Sin Fightcade ni netplay.";
@@ -111,6 +113,8 @@ namespace Cloud90.GameLink
         }
         static string Gameplay(string game)
         {
+            if(game=="gow2")return "Candidatos de prueba: vida, daño, vida completa, muerte, magia parcial/completa/vacía, Furia de los Titanes completa/vacía y escudo, dar/quitar 500 orbes y recargar el Amuleto de los Hados. Los orbes requieren permiso para cambios permanentes y pueden persistir al guardar. Matar requiere desactivar Modo sin morir y habilitar efectos destructivos. La furia modifica el medidor; no concede la habilidad. Espadas, mejoras, congelación, petrificación y enemigos no están disponibles en II. F9 pausa los efectos; no cargues estados durante la conexión. Las operaciones requieren tus pruebas en combate.";
+            if(game=="gow1")return "Candidatos de prueba: curar, dañar, vida completa, matar a Kratos, dar/quitar/vaciar/completar magia, furia completa/vacía, espadas y mejoras mínimas/máximas y escudo, dar/quitar 500 orbes. Matar requiere desactivar Modo sin morir y habilitar efectos destructivos. Las mejoras requieren habilitar efectos destructivos y pueden persistir al guardar; no se revierten al pausar. Dar/quitar 500 orbes también requiere permiso para cambios permanentes. Nivel significa mejoras de armas/poderes, no capítulo ni dificultad. Sin magia vacía el medidor una vez. No cargues estados durante la conexión. F9 pausa los efectos. Congelación, petrificación y enemigos no están implementados. Los candidatos aún necesitan tus pruebas en combate.";
             switch (game)
             {
                 case "mslugx": return "Los efectos se habilitan a pie, en forma normal y durante una misión activa. La invulnerabilidad a golpes no garantiza protección contra caídas o reloj. Los sabotajes de controles pueden provocar muertes. Al morir o cambiar de zona se limpian los efectos temporales.";

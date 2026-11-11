@@ -427,6 +427,8 @@ namespace Cloud90.GameLink
                 new GamePanel(this, new CupheadHost()),
                 new GamePanel(this, new GtaSaHost()),
                 new GamePanel(this, new SmwHost()),
+                new GamePanel(this, new GodOfWarHost("gow1")),
+                new GamePanel(this, new GodOfWarHost("gow2")),
                 new GamePanel(this, new MslugxHost()),
                 new GamePanel(this, new MvscHost()),
             };

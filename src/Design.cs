@@ -66,6 +66,7 @@ namespace Cloud90.GameLink
         {
             switch (id)
             {
+                case "gow1": case "gow2": return "PCSX2 · integración experimental. F9 pausa los efectos. Consulta los requisitos.";
                 case "mslugx": return "Armas, granadas y sabotajes en manos de tu chat.";
                 case "mvsc": return "Tu chat decide cómo cambia la siguiente pelea.";
                 case "smw": return "Los poderes de Mario están en manos de tu chat.";
@@ -81,6 +82,7 @@ namespace Cloud90.GameLink
         {
             switch (id)
             {
+                case "gow1": case "gow2": return "PCSX2 · integración experimental. F9 pausa los efectos. Consulta los requisitos.";
                 case "mslugx": return "MAME 0.289, un jugador. F9 pausa los efectos.";
                 case "mvsc": return "MAME 0.289, revisión USA. Jugador 1 contra CPU. F9 pausa los efectos.";
                 case "smw": return "ROM USA, un jugador. F9 pausa los efectos y bloquea su carga de estado.";
