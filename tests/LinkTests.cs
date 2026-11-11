@@ -271,6 +271,7 @@ namespace Cloud90.GameLink
         { return JsonProtocol(server, inboxPath, "cuphead"); }
         public static int SmwProtocol(string server, string inboxPath)
         { return JsonProtocol(server, inboxPath, "smw"); }
+        public static int CelesteProtocol(string server, string inboxPath) { return JsonProtocol(server, inboxPath, "celeste"); }
         public static int GowProtocol(string server,string inboxPath) {return JsonProtocol(server,inboxPath,"gow2");}
         public static int MslugxProtocol(string server,string inboxPath) {return JsonProtocol(server,inboxPath,"mslugx");}
         public static int MvscProtocol(string server, string inboxPath)
@@ -288,6 +289,7 @@ namespace Cloud90.GameLink
                 if (game == "mvsc" || game == "gow1" || game == "gow2") { link.SetContext("attempt-1"); link.SetCapabilities(new[] { "heal", "damage" }); }
                 else if (game == "mslugx") {link.SetContext("attempt-1");link.SetCapabilities(new[]{"grenades_add","no_shoot"});}
                 else if (game == "smw") { link.SetContext("attempt-1"); link.SetCapabilities(new[] { "fire_flower", "small" }); }
+                else if (game == "celeste") { link.SetContext("attempt-1"); link.SetCapabilities(new[] { "spawn_chaser" }); }
                 else if (game == "cuphead") { link.SetContext("attempt-1"); link.SetCapabilities(new[] { "heal", "ice_floor" }); }
                 else { link.OnModLine("capabilities give_item,fall_void,chaos"); link.OnModLine("context attempt-1"); }
                 link.Start();
@@ -300,14 +302,14 @@ namespace Cloud90.GameLink
                     if (text.Contains("e-42")) break;
                     Thread.Sleep(50);
                 }
-                Check((game == "mvsc" || game == "mslugx" || game == "gow1" || game == "gow2") ? text.Contains(game == "mslugx" ? "grenades_add" : "heal") && text.Contains("attempt-1") : game == "smw" ? text.Contains("fire_flower") && text.Contains("attempt-1") : game == "cuphead" ? text.Contains("heal") && text.Contains("\"safe\":true") && text.Contains("attempt-1") : text.Contains("give_item") && text.Contains("missile"), game + " WebSocket command reaches JSON inbox with the expected safety fields");
+                Check(game == "celeste" ? text.Contains("spawn_chaser") && text.Contains("badeline") && text.Contains("attempt-1") : (game == "mvsc" || game == "mslugx" || game == "gow1" || game == "gow2") ? text.Contains(game == "mslugx" ? "grenades_add" : "heal") && text.Contains("attempt-1") : game == "smw" ? text.Contains("fire_flower") && text.Contains("attempt-1") : game == "cuphead" ? text.Contains("heal") && text.Contains("\"safe\":true") && text.Contains("attempt-1") : text.Contains("give_item") && text.Contains("missile"), game + " WebSocket command reaches JSON inbox with the expected safety fields");
                 Check(text.Contains("protocol-session") && text.Contains((game == "mvsc" || game == "mslugx" || game == "gow1" || game == "gow2") ? "expiresUtcMs" : "expiresMs"), "CTR command has its session and expiry");
-                if (game == "cuphead" || game == "ctrnf" || game == "smw" || (game == "mvsc" || game == "mslugx" || game == "gow1" || game == "gow2")) Check(text.Contains("\"noDeath\":false") && ((game == "mvsc" || game == "mslugx" || game == "gow1" || game == "gow2") || text.Contains("\"allowDestructive\":true")), "welcome policy reaches the native bridge");
+                if (game == "celeste" || game == "cuphead" || game == "ctrnf" || game == "smw" || (game == "mvsc" || game == "mslugx" || game == "gow1" || game == "gow2")) Check(text.Contains("\"noDeath\":false") && ((game == "mvsc" || game == "mslugx" || game == "gow1" || game == "gow2") || text.Contains("\"allowDestructive\":true")), "welcome policy reaches the native bridge");
                 link.OnModLine("ack e-42 ok");
-                if (game == "cuphead" || game == "ctrnf" || game == "smw" || (game == "mvsc" || game == "mslugx" || game == "gow1" || game == "gow2")) link.SetContext("attempt-2");
+                if (game == "celeste" || game == "cuphead" || game == "ctrnf" || game == "smw" || (game == "mvsc" || game == "mslugx" || game == "gow1" || game == "gow2")) link.SetContext("attempt-2");
                 Thread.Sleep(500);
                 Check(!ReadShared(inboxPath).Contains("e-42"), game + " native acknowledgement clears the command");
-                if (game == "cuphead" || game == "ctrnf" || game == "smw" || (game == "mvsc" || game == "mslugx" || game == "gow1" || game == "gow2")) Check(ReadShared(inboxPath).Contains("\"noDeath\":true") && ((game == "mvsc" || game == "mslugx" || game == "gow1" || game == "gow2") || ReadShared(inboxPath).Contains("\"allowDestructive\":false")), "policy changes reach a running bridge");
+                if (game == "celeste" || game == "cuphead" || game == "ctrnf" || game == "smw" || (game == "mvsc" || game == "mslugx" || game == "gow1" || game == "gow2")) Check(ReadShared(inboxPath).Contains("\"noDeath\":true") && ((game == "mvsc" || game == "mslugx" || game == "gow1" || game == "gow2") || ReadShared(inboxPath).Contains("\"allowDestructive\":false")), "policy changes reach a running bridge");
                 link.Stop();
             }
             return failures - before;

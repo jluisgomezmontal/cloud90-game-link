@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Celeste" HintPath="$(EverestLib)/Celeste.dll" Private="false" />
+    <Reference Include="FNA" HintPath="$(EverestLib)/FNA.dll" Private="false" />
+    <Reference Include="MMHOOK_Celeste" HintPath="$(EverestLib)/MMHOOK_Celeste.dll" Private="false" />
+  </ItemGroup>
+</Project>
