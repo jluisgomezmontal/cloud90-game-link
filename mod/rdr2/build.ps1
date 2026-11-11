@@ -27,7 +27,7 @@ Push-Location -LiteralPath $dist
 try {
     $command = 'call "' + $VcVars + '" >nul && cl /nologo /LD /MT /O2 /EHsc /std:c++20 /I"' +
         $include + '" ..\Diagnostics.cpp /link /OUT:Cloud90.RDR2.Diagnostics.asi "' + $library +
-        '" shell32.lib ole32.lib uuid.lib'
+        '" shell32.lib ole32.lib uuid.lib user32.lib'
     & cmd.exe /d /c $command
     if ($LASTEXITCODE -ne 0) { throw 'RDR2 diagnostic build failed.' }
 }
