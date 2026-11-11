@@ -80,7 +80,7 @@ namespace Cloud90.GameLink
 
         static string Requirements(string game)
         {
-            if(game=="gow1"||game=="gow2")return "PCSX2 para Windows, BIOS y tu propia imagen del juego. Activa PINE en los ajustes avanzados (slot 28011). God of War I: SCUS-97399 / D6385328. God of War II aún no tiene un perfil compatible. Esta compilación es experimental y no incorpora enemigos ni furia.";
+            if(game=="gow1"||game=="gow2")return "PCSX2 para Windows, BIOS y tu propia imagen del juego. Activa PINE en los ajustes avanzados (slot 28011). God of War I: SCUS-97399 / D6385328. Usa Start-GodOfWarPreview.ps1 para abrir la compilación experimental. God of War II aún no tiene un perfil compatible.";
             switch (game)
             {
                 case "mslugx": return "Necesitas MAME 0.289 para Windows, tus ROMs mslugx.zip y neogeo.zip auditadas dentro de roms. Selecciona la carpeta con mame.exe e instala el plugin con MAME cerrado. Usa el token propio de Metal Slug X.";
@@ -113,7 +113,7 @@ namespace Cloud90.GameLink
         }
         static string Gameplay(string game)
         {
-            if(game=="gow1"||game=="gow2")return "Solo se investigan vida y magia de God of War I USA. No cargues estados durante la conexión: pausa los efectos y reinicia PCSX2. No se ha completado la validación de cinemáticas, QTE, jefes ni transiciones. Usa F9 o Pausar efectos para detener los comandos. El escudo bloquea los sabotajes de Cloud90; no evita el daño normal del juego.";
+            if(game=="gow1"||game=="gow2")return "Candidatos de prueba: curar, dañar, vida completa, matar a Kratos, dar/quitar/vaciar/completar magia, furia completa/vacía, espadas y mejoras mínimas/máximas y escudo. Matar requiere desactivar Modo sin morir y habilitar efectos destructivos. Las mejoras requieren habilitar efectos destructivos y pueden persistir al guardar; no se revierten al pausar. Nivel significa mejoras de armas/poderes, no capítulo ni dificultad. Sin magia vacía el medidor una vez. No cargues estados durante la conexión. F9 pausa los efectos. Congelación, petrificación y enemigos no están implementados. Los candidatos aún necesitan tus pruebas en combate.";
             switch (game)
             {
                 case "mslugx": return "Los efectos se habilitan a pie, en forma normal y durante una misión activa. La invulnerabilidad a golpes no garantiza protección contra caídas o reloj. Los sabotajes de controles pueden provocar muertes. Al morir o cambiar de zona se limpian los efectos temporales.";

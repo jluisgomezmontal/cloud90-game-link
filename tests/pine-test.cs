@@ -28,7 +28,23 @@ namespace Cloud90.GameLink {
                 Assert(!GodOfWarHost.ValidMeter(0,100),"dead");
                 Assert(!GodOfWarHost.ValidMeter(110,100),"over max");
                 Assert(!GodOfWarHost.ValidMeter(1,float.PositiveInfinity),"infinite");
-                Console.WriteLine("12 PINE/profile checks passed");return 0;
+                Assert(GodOfWarEffects.HealthTarget("heal_max",10,200)==200,"full health");
+                Assert(GodOfWarEffects.HealthTarget("damage",1,200)==1,"safe damage");
+                Assert(GodOfWarEffects.HealthTarget("kill",100,200)==0,"kill");
+                Assert(GodOfWarEffects.MagicTarget("magic_max",0,150)==150,"full magic");
+                Assert(GodOfWarEffects.MagicTarget("magic_empty",150,150)==0,"empty magic");
+                Assert(GodOfWarEffects.Policy("kill",true,true,false)!=null,"no death");
+                Assert(GodOfWarEffects.Policy("kill",false,false,false)!=null,"destructive permission");
+                Assert(GodOfWarEffects.Policy("kill",false,true,true)!=null,"shield kill");
+                Assert(GodOfWarEffects.Policy("kill",false,true,false)==null,"explicit kill");
+                Assert(GodOfWarEffects.Policy("levels_max",false,false,false)!=null,"progress permission");
+                Assert(GodOfWarEffects.Policy("petrify",false,true,false)!=null,"unsupported petrification");
+                Assert(GodOfWarEffects.UpgradeTargets("levels_max").Length==6,"six upgrade fields");
+                Assert(GodOfWarEffects.UpgradeTargets("blades_min")[0].Value==1,"minimum blades");
+                Assert(GodOfWarEffects.UpgradeTargets("blades_max")[0].Value==5,"maximum blades");
+                foreach(var target in GodOfWarEffects.UpgradeTargets("levels_min"))Assert(target.Key>=0x0076D7F4&&target.Key<=0x0076D808,"upgrade bounds");
+                Case(new byte[]{5,0,0,0,0},p=>p.WriteFloat(0x100000,100));
+                Console.WriteLine("PINE, effect limits, destructive policy and upgrade target checks passed");return 0;
             }catch(Exception e){Console.Error.WriteLine(e);return 1;}
         }
     }

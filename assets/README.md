@@ -10,3 +10,7 @@ surface #12121a, raised surface #1a1a26, purple #7c3aed, pink #ec4899,
 cyan #06b6d4. Game art belongs to the respective rights holders.
 
 All assets are embedded during compilation. No downloads are required at runtime.
+
+God of War I uses `gow1.png`, converted without cropping from the existing
+frontend `public/juegos/gow1.webp` (960 × 631). PNG preserves the original
+composition; the Game Link banner and selector both find it through `Art.gow1.png`.

@@ -77,8 +77,8 @@ namespace Cloud90.GameLink
                     if(!ValidMeter(health,max)) {Block("Kratos muerto o medidor no compatible");return;}
                     if(epoch==""||lastCharacter!=character||identity!=serial+crc) {epoch=Guid.NewGuid().ToString("N");shieldUntil=DateTime.MinValue;}
                     lastCharacter=character;identity=serial+crc;
-                    link.SetContext(epoch);link.SetCapabilities(new[]{"heal","damage","magic_add","magic_remove","shield"});link.OnModLine("state 1");
-                    Message("God of War I USA conectado · perfil experimental: vida y magia. No cargar estados durante la conexión.");
+                    link.SetContext(epoch);link.SetCapabilities(GodOfWarEffects.Capabilities);link.OnModLine("state 1");
+                    Message("God of War I USA conectado · recursos y mejoras experimentales. No cargar estados durante la conexión.");
                     foreach(var item in inbox.LocalPending()) {
                         string cached;
                         if(results.TryGetValue(item.Id,out cached)) {link.OnModLine("ack "+item.Id+" "+cached);continue;}
@@ -89,17 +89,30 @@ namespace Cloud90.GameLink
                         if(item.Epoch!=epoch||(DateTime.UtcNow-item.Sent).TotalSeconds>=2)result="comando vencido";
                         else if(link.Paused)result="en pausa";
                         else if(pine.Status()!=0||pine.Read32(0x0029CD58)!=player||pine.Read32(0x0029E560)!=11)result="partida cambió";
-                        else if((item.Effect=="damage"||item.Effect=="magic_remove")&&DateTime.UtcNow<shieldUntil)result="escudo activo";
+                        else if(GodOfWarEffects.Policy(item.Effect,item.Safe,item.AllowDestructive,DateTime.UtcNow<shieldUntil)!=null)result=GodOfWarEffects.Policy(item.Effect,item.Safe,item.AllowDestructive,DateTime.UtcNow<shieldUntil);
                         else if(item.Effect=="shield") {shieldUntil=DateTime.UtcNow.AddMilliseconds(Math.Max(1000,Math.Min(30000,item.Ms)));result="ok";}
-                        else if(item.Effect=="heal"||item.Effect=="damage") {
+                        else if(item.Effect=="heal"||item.Effect=="damage"||item.Effect=="heal_max"||item.Effect=="kill") {
                             float current=pine.ReadFloat(character+0x178),maximum=pine.ReadFloat(character+0x17c);
-                            if(ValidMeter(current,maximum)) {float target=item.Effect=="heal"?Math.Min(maximum,current+maximum*0.25f):Math.Max(1,current-maximum*0.15f);pine.WriteFloat(character+0x178,target);result="ok";}
-                        } else if(item.Effect=="magic_add"||item.Effect=="magic_remove") {
+                            if(ValidMeter(current,maximum))result=GodOfWarEffects.SetFloat(pine,character+0x178,GodOfWarEffects.HealthTarget(item.Effect,current,maximum));
+                        } else if(item.Effect=="magic_add"||item.Effect=="magic_remove"||item.Effect=="magic_max"||item.Effect=="magic_empty") {
                             int level=(int)((pine.Read32(0x00302D34)>>24)&255);
                             if(level>=1&&level<=5) {
                                 float maximum=pine.ReadFloat(0x003028F4+(uint)level*4),current=pine.ReadFloat(0x00302D1C);
-                                if(!float.IsNaN(current)&&current>=0&&current<=maximum&&maximum>=100&&maximum<=200) {pine.WriteFloat(0x00302D1C,item.Effect=="magic_add"?Math.Min(maximum,current+maximum*0.25f):Math.Max(0,current-maximum*0.25f));result="ok";}
+                                if(!float.IsNaN(current)&&current>=0&&current<=maximum&&maximum>=100&&maximum<=200)result=GodOfWarEffects.SetFloat(pine,0x00302D1C,GodOfWarEffects.MagicTarget(item.Effect,current,maximum));
                             } else result="magia no desbloqueada";
+                        } else if(item.Effect=="rage_max"||item.Effect=="rage_empty") {
+                            float current=pine.ReadFloat(0x00302D20);
+                            if(!float.IsNaN(current)&&current>=0&&current<=100)result=GodOfWarEffects.SetFloat(pine,0x00302D20,item.Effect=="rage_max"?100:0);
+                        } else if(item.Effect=="blades_min"||item.Effect=="blades_max"||item.Effect=="levels_min"||item.Effect=="levels_max") {
+                            var targets=GodOfWarEffects.UpgradeTargets(item.Effect);
+                            bool valid=true;foreach(var target in targets)if(pine.Read32(target.Key)>(target.Key==0x0076D808?5u:2u))valid=false;
+                            if(valid) {
+                                result="ok";
+                                foreach(var target in targets) {
+                                    pine.Write32(target.Key,target.Value);
+                                    if(pine.Read32(target.Key)!=target.Value)result="resultado incierto; no se repite";
+                                }
+                            } else result="mejoras no disponibles en este contexto";
                         }
                         results[item.Id]=result;link.OnModLine("ack "+item.Id+" "+result);
                     }

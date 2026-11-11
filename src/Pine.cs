@@ -60,13 +60,17 @@ namespace Cloud90.GameLink
             byte[] data=Call(request); if(data.Length!=4)throw new IOException("Lectura PINE incompleta"); return BitConverter.ToUInt32(data,0);
         }
         public float ReadFloat(uint address) { return BitConverter.ToSingle(BitConverter.GetBytes(Read32(address)),0); }
-        internal void WriteFloat(uint address, float value)
+        internal void Write32(uint address, uint value)
         {
             CheckAddress(address);
-            if(float.IsNaN(value)||float.IsInfinity(value))throw new ArgumentOutOfRangeException("value");
             byte[] request=new byte[9];request[0]=6;
             Array.Copy(BitConverter.GetBytes(address),0,request,1,4);Array.Copy(BitConverter.GetBytes(value),0,request,5,4);
             if(Call(request).Length!=0)throw new IOException("Escritura PINE inválida");
+        }
+        internal void WriteFloat(uint address, float value)
+        {
+            if(float.IsNaN(value)||float.IsInfinity(value))throw new ArgumentOutOfRangeException("value");
+            Write32(address,BitConverter.ToUInt32(BitConverter.GetBytes(value),0));
         }
         public void Dispose() { client.Close(); }
     }
