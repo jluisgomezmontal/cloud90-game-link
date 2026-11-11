@@ -45,10 +45,28 @@ Para probar estos tres efectos, crea también `%LOCALAPPDATA%\Cloud90GameLink\rd
 
 Munición tiene 60 segundos de enfriamiento. Iniciar y terminar persecución tienen 90 segundos cada uno. La lectura inmediata del plugin puede marcar `unconfirmed` si el juego procesa el cambio en un fotograma posterior.
 
-Estos atajos son locales. Quita el archivo `enable-preview.txt` y reinicia el juego para volver al diagnóstico de solo lectura. El enlace con reglas de regalos, la emboscada, la tormenta y el caballo de rescate siguen pendientes.
+### Emboscada con enemigo seleccionable
+
+Con los mismos dos archivos de activación, usa estos atajos en exploración libre. Cada opción crea un único enemigo e intenta dirigirlo contra el personaje controlado.
+
+| Atajo | Enemigo | Modelo |
+| --- | --- | --- |
+| Ctrl + Shift + F1 | Bandido con revólver | `g_m_m_unibanditos_01` |
+| Ctrl + Shift + F2 | Cazarrecompensas con carabina | `g_m_m_bountyhunters_01` |
+| Ctrl + Shift + F3 | Lobo | `a_c_wolf` |
+| Ctrl + Shift + F4 | Oso | `a_c_bear_01` |
+| Ctrl + Shift + F5 | Vampiro de Saint Denis con daga | `cs_vampire` |
+
+La emboscada busca un punto con terreno cargado a 12–26 metros del jugador. Tiene un enfriamiento compartido de 60 segundos desde que acepta cargar el modelo y dura hasta 45 segundos. Intenta retirar al NPC propio si muere, cambia el personaje, se pierde el contexto o termina el tiempo. Si el juego pausa el hilo del plugin, la limpieza se procesa cuando vuelve a ejecutarse.
+
+Revisa las entradas `effect=bandit_ambush` del registro. `spawned` confirma la creación del NPC. `combat_confirmed` confirma que el juego detectó combate con el jugador. Prueba cada modelo en terreno abierto, revisa que el vampiro use la daga y verifica la limpieza al pausar, morir o entrar en una misión. El efecto reutiliza el modelo del vampiro y le asigna combate local.
+
+Estos atajos son locales. Quita el archivo `enable-preview.txt` y reinicia el juego para volver al diagnóstico de solo lectura. El enlace con reglas de regalos, la tormenta y el caballo de rescate siguen pendientes.
 
 ## Referencias
 
 - [API y runtime de Script Hook RDR2](https://dev-c.com/rdr2/scripthookrdr2/)
 - [Base de funciones nativas de RDR3](https://github.com/alloc8or/rdr3-nativedb-data)
 - [Funciones de persecución documentadas por el autor de RDR2 Trainer](https://github.com/jonas-lundahl/rdr2-trainer/blob/main/docs/wanted-sdk.md)
+- [Modelos de personajes y animales del juego](https://github.com/femga/rdr3_discoveries/blob/master/peds/peds_list.lua)
+- [Identificadores de armas del juego](https://github.com/femga/rdr3_discoveries/blob/master/weapons/weapons.lua)

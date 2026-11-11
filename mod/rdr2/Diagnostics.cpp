@@ -8,6 +8,7 @@
 #include <bit>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 #include <filesystem>
 #include <string_view>
 
@@ -50,6 +51,25 @@ constexpr UINT64 ForceLawResponse = 0x956510F8C36B5C64;
 constexpr UINT64 ClearCurrentPursuit = 0x55F37F5F3F2475E1;
 constexpr UINT64 ClearWantedScore = 0x062B4A4A3396351D;
 constexpr UINT64 SetWantedIntensity = 0xA80FF73F772ACF6A;
+constexpr UINT64 IsModelValid = 0x392C8D8E07B70EFC;
+constexpr UINT64 IsModelAPed = 0xC3F09DE9D6D17DDA;
+constexpr UINT64 RequestModel = 0xFA28FE3A6246FC30;
+constexpr UINT64 HasModelLoaded = 0x1283B8B89DD5D1B6;
+constexpr UINT64 ReleaseModel = 0x4AD96EF928BD4F9A;
+constexpr UINT64 GetEntityCoords = 0xA86D5F069399F44D;
+constexpr UINT64 GetOffsetCoords = 0x1899F328B0E12848;
+constexpr UINT64 GetSafeCoord = 0xB61C8E878A4199CA;
+constexpr UINT64 HasPositionCollision = 0x6BFBDC46139C45AB;
+constexpr UINT64 IsEntityInWater = 0xDDE5C125AC446723;
+constexpr UINT64 CreatePed = 0xD49F9B0955C367DE;
+constexpr UINT64 DeletePed = 0xCC0EF140F99365C5;
+constexpr UINT64 GetEntityModel = 0xDA76A9F39210D365;
+constexpr UINT64 BelongsToScript = 0x622B1980CBE13332;
+constexpr UINT64 SetMissionEntity = 0xDC19C288082E586E;
+constexpr UINT64 EquipOutfitPreset = 0x77FF8D35EEC6BBC4;
+constexpr UINT64 GiveWeaponToPed = 0x5E3BDDBCB83F3D84;
+constexpr UINT64 TaskCombatPed = 0xF166E48407BAC484;
+constexpr UINT64 IsPedInCombat = 0x4859F1FC66A6278E;
 constexpr std::string_view FreeRoam = "story_free_roam_candidate";
 
 UINT64 NativeArg(float value) {
@@ -235,6 +255,163 @@ constexpr UINT32 GameHash(std::string_view lowerCaseName) {
     return hash;
 }
 
+struct NativeVector {
+    alignas(8) float x;
+    alignas(8) float y;
+    alignas(8) float z;
+};
+static_assert(sizeof(NativeVector) == 24);
+
+template <typename... Args>
+NativeVector ReadVector(UINT64 hash, Args... args) {
+    NativeVector value{};
+    std::memcpy(&value, CallNative(hash, args...), sizeof(value));
+    return value;
+}
+
+struct EnemyOption {
+    const char* id;
+    UINT32 model;
+    UINT32 weapon;
+    int key;
+};
+
+constexpr std::array EnemyOptions{
+    EnemyOption{"bandit", GameHash("g_m_m_unibanditos_01"), GameHash("weapon_revolver_cattleman"), VK_F1},
+    EnemyOption{"bounty_hunter", GameHash("g_m_m_bountyhunters_01"), GameHash("weapon_repeater_carbine"), VK_F2},
+    EnemyOption{"wolf", GameHash("a_c_wolf"), 0, VK_F3},
+    EnemyOption{"bear", GameHash("a_c_bear_01"), 0, VK_F4},
+    EnemyOption{"vampire", GameHash("cs_vampire"), GameHash("weapon_melee_knife_vampire"), VK_F5},
+};
+static_assert(EnemyOptions[0].model == 0x19486791);
+static_assert(EnemyOptions[1].model == 0x1973FE45);
+static_assert(EnemyOptions[2].model == 0xBBD91DDA);
+static_assert(EnemyOptions[3].model == 0xBCFD0E7F);
+static_assert(EnemyOptions[4].model == 0xD95BCB7D && EnemyOptions[4].weapon == 0x14D3F94D);
+
+bool FindEnemyPosition(int target, NativeVector& position) {
+    if (ReadNative(IsEntityInWater, target)) return false;
+    const auto origin = ReadVector(GetEntityCoords, target, 1, 0);
+    constexpr std::array<NativeVector, 4> offsets{{{0, -18, 0}, {-18, 0, 0}, {18, 0, 0}, {0, 18, 0}}};
+    for (const auto& offset : offsets) {
+        const auto probe = ReadVector(GetOffsetCoords, target, offset.x, offset.y, offset.z);
+        NativeVector candidate{};
+        if (!ReadNative(GetSafeCoord, probe.x, probe.y, probe.z, 1, &candidate, 0)) continue;
+        const float distance = std::hypot(candidate.x - origin.x, candidate.y - origin.y);
+        if (distance >= 12 && distance <= 26 && std::abs(candidate.z - origin.z) <= 4 &&
+            ReadNative(HasPositionCollision, candidate.x, candidate.y, candidate.z)) {
+            position = candidate;
+            return true;
+        }
+    }
+    return false;
+}
+
+struct Ambush {
+    const EnemyOption* option = nullptr;
+    int target = 0;
+    int enemy = 0;
+    ULONGLONG deadline = 0;
+    ULONGLONG combatCheckAt = 0;
+    ULONGLONG availableAt = 0;
+    bool cleanup = false;
+    bool reportedCombat = false;
+
+    const char* Start(const EnemyOption& selected, const Sample& sample, ULONGLONG now, bool shielded) {
+        if (sample.context != FreeRoam) return "out_of_context";
+        if (shielded) return "shielded";
+        if (option) return "ambush_active";
+        if (now < availableAt) return "cooldown";
+        if (!ReadNative(IsModelValid, selected.model) || !ReadNative(IsModelAPed, selected.model)) {
+            return "model_unavailable";
+        }
+        option = &selected;
+        cleanup = false;
+        target = sample.ped;
+        deadline = now + 3000;
+        availableAt = now + 60000;
+        CallNative(RequestModel, option->model, 0);
+        return "loading_model";
+    }
+
+    bool OwnsEnemy() const {
+        return ReadNative(DoesEntityExist, enemy) &&
+            static_cast<UINT32>(ReadNative(GetEntityModel, enemy)) == option->model &&
+            ReadNative(BelongsToScript, enemy, 0);
+    }
+
+    const char* Tick(const Sample& sample, ULONGLONG now, bool shielded) {
+        if (!option) return nullptr;
+        if (sample.context == "online") {
+            cleanup = true;
+            return nullptr;
+        }
+        if (enemy) {
+            if (!OwnsEnemy()) {
+                option = nullptr;
+                enemy = 0;
+                return "entity_no_longer_owned";
+            }
+            if (cleanup || sample.context != FreeRoam || sample.ped != target ||
+                now >= deadline || ReadNative(IsEntityDead, enemy)) {
+                cleanup = true;
+                int handle = enemy;
+                CallNative(DeletePed, &handle);
+                if (OwnsEnemy()) return nullptr;
+                option = nullptr;
+                enemy = 0;
+                return "entity_removed";
+            }
+            if (!reportedCombat) {
+                const bool inCombat = ReadNative(IsPedInCombat, enemy, target) != 0;
+                if (inCombat || now >= combatCheckAt) {
+                    reportedCombat = true;
+                    return inCombat ? "combat_confirmed" : "combat_unconfirmed";
+                }
+            }
+            return nullptr;
+        }
+
+        const char* failure = nullptr;
+        if (cleanup || sample.context != FreeRoam || sample.ped != target) failure = "context_changed";
+        else if (shielded) failure = "shielded";
+        else if (now >= deadline) failure = "model_timeout";
+        else if (!ReadNative(HasModelLoaded, option->model)) return nullptr;
+
+        if (!failure) {
+            NativeVector position{};
+            if (!FindEnemyPosition(target, position)) failure = "no_safe_position";
+            else {
+                enemy = ReadNative(CreatePed, option->model, position.x, position.y, position.z, 0.0f, 0, 1, 0, 0);
+                if (!enemy || !ReadNative(DoesEntityExist, enemy)) failure = "spawn_failed";
+            }
+        }
+        CallNative(ReleaseModel, option->model);
+        if (failure) {
+            option = nullptr;
+            enemy = 0;
+            cleanup = false;
+            return failure;
+        }
+
+        CallNative(SetMissionEntity, enemy, 1, 0);
+        CallNative(EquipOutfitPreset, enemy, 0, 0);
+        if (ReadNative(IsEntityInWater, enemy)) {
+            cleanup = true;
+            return "unsafe_spawn";
+        }
+        if (option->weapon) {
+            CallNative(GiveWeaponToPed, enemy, option->weapon, 30, 1, 0, 0, 0, 0.0f, 0.0f,
+                       GameHash("add_reason_default"), 1, 0.0f, 0);
+        }
+        CallNative(TaskCombatPed, enemy, target, 0, 16);
+        deadline = now + 45000;
+        combatCheckAt = now + 3000;
+        reportedCombat = false;
+        return "spawned";
+    }
+};
+
 EffectResult ModifyWanted(const Sample& sample, bool start) {
     const int player = ReadNative(PlayerId);
     const int before = ReadNative(GetWantedLevel, player);
@@ -289,6 +466,14 @@ bool HasMarker(const std::filesystem::path& directory, const wchar_t* name) {
     return attributes != INVALID_FILE_ATTRIBUTES && !(attributes & FILE_ATTRIBUTE_DIRECTORY);
 }
 
+void LogAmbush(const std::filesystem::path& path, ULONGLONG elapsed, const EnemyOption& option, const char* result) {
+    FILE* log = nullptr;
+    if (_wfopen_s(&log, path.c_str(), L"a") == 0) {
+        std::fprintf(log, "%llu ms effect=bandit_ambush enemy=%s result=%s\n", elapsed, option.id, result);
+        std::fclose(log);
+    }
+}
+
 std::filesystem::path GetLogPath() {
     PWSTR localAppData = nullptr;
     const HRESULT result = SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, nullptr, &localAppData);
@@ -320,6 +505,8 @@ void ScriptMain() {
     const bool extendedPreview = preview && HasMarker(logPath.parent_path(), L"enable-extended-preview.txt");
     std::array<bool, PreviewEffects.size()> held{};
     std::array<ULONGLONG, PreviewEffects.size()> availableAt{};
+    std::array<bool, EnemyOptions.size()> enemyKeysHeld{};
+    Ambush ambush;
     ULONGLONG shieldUntil = 0;
     ULONGLONG nextLog = 0;
     int lastPed = 0;
@@ -361,6 +548,23 @@ void ScriptMain() {
                     std::fprintf(log, "%llu ms effect=%s result=%s before=%.3f after=%.3f\n",
                                  now - start, effect.name, result.reason, result.before, result.after);
                     std::fclose(log);
+                }
+            }
+            if (extendedPreview) {
+                for (size_t i = 0; i < EnemyOptions.size(); ++i) {
+                    const auto& option = EnemyOptions[i];
+                    const bool down = modifier && IsKeyDown(option.key);
+                    const bool pressed = down && !enemyKeysHeld[i];
+                    enemyKeysHeld[i] = down;
+                    if (pressed && GameHasFocus()) {
+                        const char* result = ambush.Start(option, ReadContext(), now, now < shieldUntil);
+                        LogAmbush(logPath, now - start, option, result);
+                    }
+                }
+                if (const auto* option = ambush.option) {
+                    if (const char* result = ambush.Tick(sample, now, now < shieldUntil)) {
+                        LogAmbush(logPath, now - start, *option, result);
+                    }
                 }
             }
         }
