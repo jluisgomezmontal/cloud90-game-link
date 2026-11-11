@@ -86,6 +86,16 @@ namespace Cloud90.GameLink
                         else if(pine.Status()!=0||pine.Read32(profile.PlayerAddress)!=player||pine.Read32(profile.ModeAddress)!=11||pine.Read32(player)!=character||pine.Read32(character+4)!=profile.Vtable)result="partida cambió";
                         else if(GodOfWarEffects.Policy(item.Effect,item.Safe,item.AllowDestructive,DateTime.UtcNow<shieldUntil)!=null)result=GodOfWarEffects.Policy(item.Effect,item.Safe,item.AllowDestructive,DateTime.UtcNow<shieldUntil);
                         else if(item.Effect=="shield") {shieldUntil=DateTime.UtcNow.AddMilliseconds(Math.Max(1000,Math.Min(30000,item.Ms)));result="ok";}
+                        else if(item.Effect=="orbs_add"||item.Effect=="orbs_remove") {
+                            uint current=profile.Orbs(pine);
+                            if(current<=profile.OrbsMaximum) {
+                                uint target=GodOfWarEffects.OrbsTarget(item.Effect,current,profile.OrbsMaximum);
+                                if(profile.IsTwo)pine.Write32(profile.OrbsAddress,target);else pine.Write16(profile.OrbsAddress,(ushort)target);
+                                result=profile.Orbs(pine)==target?"ok":"resultado incierto; no se repite";
+                            } else result="contador de orbes no compatible";
+                        } else if(item.Effect=="amulet_max") {
+                            if(profile.IsTwo) {float current=pine.ReadFloat(0x00335844);if(!float.IsNaN(current)&&current>=0&&current<=100)result=GodOfWarEffects.SetFloat(pine,0x00335844,100);}
+                        }
                         else if(item.Effect=="heal"||item.Effect=="damage"||item.Effect=="heal_max"||item.Effect=="kill") {
                             float current=pine.ReadFloat(character+0x178),maximum=pine.ReadFloat(character+0x17c);
                             if(ValidMeter(current,maximum))result=GodOfWarEffects.SetFloat(pine,character+0x178,GodOfWarEffects.HealthTarget(item.Effect,current,maximum));

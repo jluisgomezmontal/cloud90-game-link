@@ -8,6 +8,9 @@ namespace Cloud90.GameLink
         internal readonly string Id, Serial, Crc;
         internal readonly uint PlayerAddress, ModeAddress, Vtable, MagicAddress, RageAddress;
         internal bool IsTwo {get {return Id=="gow2";}}
+        internal uint OrbsAddress {get {return IsTwo?0x00335850u:0x00302d28u;}}
+        internal uint OrbsMaximum {get {return IsTwo?999999u:60000u;}}
+        internal uint Orbs(IPineMemory p) {uint value=p.Read32(OrbsAddress);return IsTwo?value:value&65535;}
         internal GodOfWarProfile(string id) {
             if(id!="gow1"&&id!="gow2")throw new ArgumentException("id");
             Id=id;
@@ -57,6 +60,8 @@ namespace Cloud90.GameLink
             if(MagicMaximum(p)>0)caps.AddRange(new[]{"magic_add","magic_remove","magic_max","magic_empty"});
             float rage=p.ReadFloat(RageAddress);
             if(!float.IsNaN(rage)&&rage>=0&&rage<=100)caps.AddRange(new[]{"rage_max","rage_empty"});
+            if(Orbs(p)<=OrbsMaximum)caps.AddRange(new[]{"orbs_add","orbs_remove"});
+            if(IsTwo) {float amulet=p.ReadFloat(0x00335844);if(!float.IsNaN(amulet)&&amulet>=0&&amulet<=100)caps.Add("amulet_max");}
             // II's upgrade structures are independent and not mapped yet.
             if(!IsTwo)caps.AddRange(new[]{"blades_min","blades_max","levels_min","levels_max"});
             return caps.ToArray();

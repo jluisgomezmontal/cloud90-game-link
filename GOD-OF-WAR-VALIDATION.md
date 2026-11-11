@@ -21,7 +21,7 @@ Memory candidates were researched against https://github.com/dphades1572/god-of-
 - No native write test during player-controlled combat. The user will perform gameplay tests. No claim that the candidate effects work in gameplay yet.
 - No verified detection of all menus, QTE, cinematics, checkpoints or save-state loads. Do not load save states during a connected session; automatic safe handling remains required before stable release.
 - No enemy spawn API/object allocator/resource ownership map. No added enemies, enemy damage/health scaling, input effects, invulnerability or difficulty modifiers. Freeze and petrify have no supported state mapping and are intentionally absent from capabilities/catalog. Pausing the emulator is not a substitute for either effect.
-- God of War II now has an independent opt-in profile, eleven candidate operations, catalog and artwork. See GOD-OF-WAR-II-VALIDATION.md for its map and read-only native evidence. Its upgrade/status/spawn effects remain unavailable; I's addresses are never used for II.
+- God of War II now has an independent opt-in profile, fourteen candidate operations, catalog and artwork. See GOD-OF-WAR-II-VALIDATION.md for its map and read-only native evidence. Its upgrade/status/spawn effects remain unavailable; I's addresses are never used for II.
 - A full local preview can now be built with `build-gow-preview.ps1 -BaseExecutable <existing complete Game Link exe>`. It preserves the existing compiled Cuphead/GTA modules and licenses, refreshes source-owned scripts and embeds all art including GoW I. `dist/Cloud90GameLink-GowPreview.exe` is unsigned and unpublished. The earlier compiler-only executable in the research directory still omits embedded modules and must not be distributed.
 
 ## Added candidates and semantics
@@ -59,3 +59,5 @@ Read-only inspection of the user's original ELF identified script names `SCR_Tur
 7. Complete end-to-end local validation, existing-game regressions, full signed build, UI QA and review before a production test.
 
 PCSX2 configuration was backed up at workspace `gow-research/PCSX2.before.ini` before enabling PINE. BIOS, ISO, memory cards and save states were not edited. PINE remains enabled for development.
+
+Additional orb/amulet candidates and their remaining native checks are documented in EXTRA-MODIFIERS.md.

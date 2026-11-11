@@ -27,22 +27,30 @@ namespace Cloud90.GameLink {
             int displacement=0x67ff00-0x680004;m.Words[0x680004]=unchecked((uint)(displacement<<12));m.Words[0x67ff08]=200u<<16;
             Assert(two.MagicMaximum(m)==200,"signed relative max table and upper halfword");
             m.Words[0x335864]=0;Assert(two.MagicMaximum(m)==0,"locked magic");m.Words[0x335864]=5u<<24;
-            m.Float(two.RageAddress,100);Assert(Array.IndexOf(two.Capabilities(m),"magic_max")>=0,"II magic capability");
+            m.Float(two.RageAddress,100);m.Words[two.OrbsAddress]=0;m.Float(0x00335844,0);Assert(Array.IndexOf(two.Capabilities(m),"magic_max")>=0,"II magic capability");
+            Assert(Array.IndexOf(two.Capabilities(m),"amulet_max")>=0,"II amulet");
+            Assert(one.OrbsAddress!=two.OrbsAddress,"separate orb counters");
+            m.Words[two.OrbsAddress]=1000000;Assert(Array.IndexOf(two.Capabilities(m),"orbs_add")<0,"invalid counter");m.Words[two.OrbsAddress]=0;
             Assert(Array.IndexOf(two.Capabilities(m),"levels_max")<0,"II unmapped upgrades rejected");
             m.Words[0x67ff08]=65535u<<16;Assert(two.MagicMaximum(m)==0,"negative maximum rejected");
         }
         static void Assert(bool condition,string message) {if(!condition)throw new Exception(message);}
         static byte[] Exact(NetworkStream s,int n) {var b=new byte[n];int done=0;while(done<n){int count=s.Read(b,done,n-done);if(count==0)throw new EndOfStreamException();done+=count;}return b;}
-        static void Case(byte[] reply,Action<Pine> test) {
+        static void Case(byte[] reply,Action<Pine> test,byte[] expected=null) {
             var server=new TcpListener(IPAddress.Loopback,0);server.Start();int port=((IPEndPoint)server.LocalEndpoint).Port;
             Exception failure=null;
-            var thread=new Thread(delegate(){try{using(var c=server.AcceptTcpClient()){var stream=c.GetStream();int len=BitConverter.ToInt32(Exact(stream,4),0);Exact(stream,len-4);foreach(byte b in reply)stream.WriteByte(b);}}catch(Exception e){failure=e;}});thread.IsBackground=true;thread.Start();
+            var thread=new Thread(delegate(){try{using(var c=server.AcceptTcpClient()){var stream=c.GetStream();int len=BitConverter.ToInt32(Exact(stream,4),0);byte[] request=Exact(stream,len-4);if(expected!=null){Assert(request.Length==expected.Length,"request width");for(int i=0;i<expected.Length;i++)Assert(request[i]==expected[i],"request encoding");}foreach(byte b in reply)stream.WriteByte(b);}}catch(Exception e){failure=e;}});thread.IsBackground=true;thread.Start();
             try {using(var pine=new Pine(port))test(pine);}finally {server.Stop();Assert(thread.Join(3000),"server hung");}if(failure!=null)throw failure;
         }
         static void Rejected(Action action) {bool rejected=false;try{action();}catch(IOException){rejected=true;}Assert(rejected,"accepted invalid response");}
         static int Main() {
             try {
                 Profiles();
+                Assert(GodOfWarEffects.OrbsTarget("orbs_add",59900,60000)==60000,"orb cap");
+                Assert(GodOfWarEffects.OrbsTarget("orbs_remove",100,60000)==0,"orb floor");
+                Assert(GodOfWarEffects.Policy("orbs_remove",true,true,true)!=null,"orb shield");
+                Assert(GodOfWarEffects.Policy("orbs_add",true,false,false)!=null,"persistent permission");
+                Case(new byte[]{5,0,0,0,0},p=>p.Write16(0x302d28,60000),new byte[]{5,0x28,0x2d,0x30,0,0x60,0xea});
                 Case(new byte[]{9,0,0,0,0,0,0,0,0},p=>Assert(p.Status()==0,"status"));
                 Case(new byte[]{9,0,0,0,0,0,0,200,66},p=>Assert(p.ReadFloat(0x100000)==100,"float"));
                 Case(new byte[]{5,0,0,0,255},p=>Rejected(()=>p.Status()));

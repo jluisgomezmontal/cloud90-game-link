@@ -3,20 +3,26 @@ using System.Collections.Generic;
 
 namespace Cloud90.GameLink
 {
-    // SCUS-97399 / D6385328 only. Candidates for manual gameplay validation.
-    // Never use these addresses for GoW II, other regions or another CRC.
+    // Shared policy/math; UpgradeTargets below belongs only to GoW I USA.
+    // Per-game resource addresses belong to GodOfWarProfile.
     internal static class GodOfWarEffects
     {
         internal static readonly string[] Capabilities = {
             "heal", "damage", "heal_max", "kill", "magic_add", "magic_remove",
             "magic_max", "magic_empty", "rage_max", "rage_empty", "blades_min",
-            "blades_max", "levels_min", "levels_max", "shield"
+            "blades_max", "levels_min", "levels_max", "shield", "orbs_add", "orbs_remove", "amulet_max"
         };
         internal static bool Troll(string id) {
-            return id=="damage"||id=="kill"||id=="magic_remove"||id=="magic_empty"||id=="rage_empty"||id=="blades_min"||id=="levels_min";
+            return id=="damage"||id=="kill"||id=="magic_remove"||id=="magic_empty"||id=="rage_empty"||id=="blades_min"||id=="levels_min"||id=="orbs_remove";
         }
         internal static bool Destructive(string id) {
-            return id=="kill"||id=="blades_min"||id=="blades_max"||id=="levels_min"||id=="levels_max";
+            return id=="kill"||id=="blades_min"||id=="blades_max"||id=="levels_min"||id=="levels_max"||id=="orbs_add"||id=="orbs_remove";
+        }
+        internal static uint OrbsTarget(string effect,uint current,uint maximum) {
+            if(current>maximum||maximum>999999)throw new ArgumentOutOfRangeException("current");
+            if(effect=="orbs_add")return Math.Min(maximum,current+500);
+            if(effect=="orbs_remove")return current>500?current-500:0;
+            throw new ArgumentException("effect");
         }
         internal static string Policy(string effect,bool noDeath,bool destructive,bool shield) {
             if(Array.IndexOf(Capabilities,effect)<0)return "efecto no compatible";

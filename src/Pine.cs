@@ -76,6 +76,12 @@ namespace Cloud90.GameLink
             if(float.IsNaN(value)||float.IsInfinity(value))throw new ArgumentOutOfRangeException("value");
             Write32(address,BitConverter.ToUInt32(BitConverter.GetBytes(value),0));
         }
+        internal void Write16(uint address, ushort value) {
+            if(address>0x01fffffe||(address&1)!=0)throw new ArgumentOutOfRangeException("address");
+            byte[] request=new byte[7];request[0]=5;
+            Array.Copy(BitConverter.GetBytes(address),0,request,1,4);Array.Copy(BitConverter.GetBytes(value),0,request,5,2);
+            if(Call(request).Length!=0)throw new IOException("Escritura PINE inválida");
+        }
         public void Dispose() { client.Close(); }
     }
 }

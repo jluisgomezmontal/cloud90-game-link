@@ -6,7 +6,7 @@ Branch/PR set: feat/god-of-war-cloud90, alongside GoW I. Both client and backend
 
 - Shared PCSX2 host/transport with an independent II profile and exact serial/CRC checks.
 - II token/tab, ISO/CHD selection, PINE slot 28011, F9 pause, per-context capabilities, command expiry, duplicate result cache and explicit destructive permission.
-- Eleven candidate operations: heal, damage, full health, kill, add/remove/full/empty magic, full/empty rage and Cloud90 shield. Backend roulette is virtual and selects only available operations.
+- Fourteen candidate operations: heal, damage, full health, kill, add/remove/full/empty magic, full/empty rage, Cloud90 shield, add/remove red orbs and amulet refill. See EXTRA-MODIFIERS.md for the new data locations and manual checks. Backend roulette is virtual and selects only available operations.
 - Magic maximum is read from II's own current parameter table, including the signed packed-relative pointer and level-specific 16-bit entry; no hardcoded use of I's maximum or addresses.
 - Catalog, default rules, no-death/destructive defaults, capability gating, setup text and destructive-permission controls in the companion backend/frontend branches.
 - The web's existing gow2.webp was converted without cropping to assets/gow2.png (960 × 540); the preview embeds Art.gow2.png for both selector and banner.
