@@ -17,10 +17,12 @@ namespace Cloud90.GameLink
         System.Threading.Timer timer;
         GamePanicHotkey hotkey;
         readonly object gate=new object();
-        string epoch="", identity="", lastMessage="";
-        uint lastCharacter;
+        string epoch="", lastMessage="";
         DateTime shieldUntil;
         readonly Dictionary<string,string> results=new Dictionary<string,string>();
+        readonly GodOfWarContextGate contextGate=new GodOfWarContextGate();
+        Pcsx2LogGuard logGuard;
+        int logGeneration;
         public GodOfWarHost(string id) { this.id=id;profile=new GodOfWarProfile(id); }
         public override string Id { get {return id;} }
         public override string Title { get {return id=="gow1"?"God of War I":"God of War II";} }
@@ -47,9 +49,11 @@ namespace Cloud90.GameLink
             if(AnotherRunning())throw new InvalidOperationException("Cierra PCSX2 primero");
             using(var dialog=new OpenFileDialog {Title="Selecciona tu imagen de "+Title,Filter="Imágenes PS2|*.iso;*.chd",CheckFileExists=true}) {
                 if(dialog.ShowDialog()!=DialogResult.OK)throw new OperationCanceledException("No se seleccionó el juego");
-                link=connection;identity="";lastCharacter=0;epoch="";shieldUntil=DateTime.MinValue;results.Clear();
+                link=connection;epoch="";shieldUntil=DateTime.MinValue;results.Clear();
                 Block("Esperando PCSX2. Activa Enable PINE en sus ajustes avanzados (slot 28011).");
-                process=Process.Start(new ProcessStartInfo(Path.Combine(s.Pcsx2Dir,"pcsx2-qt.exe"),"\""+dialog.FileName+"\"") {WorkingDirectory=s.Pcsx2Dir,UseShellExecute=false});
+                string logPath=Path.Combine(Settings.DataDir,id,"pcsx2-"+Guid.NewGuid().ToString("N")+".log");
+                logGuard=new Pcsx2LogGuard(logPath);logGeneration=0;contextGate.Reset();
+                process=Process.Start(new ProcessStartInfo(Path.Combine(s.Pcsx2Dir,"pcsx2-qt.exe"),"-logfile \""+logPath+"\" -- \""+dialog.FileName+"\"") {WorkingDirectory=s.Pcsx2Dir,UseShellExecute=false});
                 process.EnableRaisingEvents=true;
                 process.Exited+=delegate {lock(gate) {if(timer!=null)timer.Dispose();if(hotkey!=null)hotkey.Dispose();Block("PCSX2 cerrado");inbox.Connected(false);}exited();};
                 hotkey=new GamePanicHotkey(process.Id,delegate {link.SetPaused(!link.Paused);});
@@ -57,24 +61,50 @@ namespace Cloud90.GameLink
             }
         }
         void Message(string value) {if(value==lastMessage)return;lastMessage=value;ReportStatus(value);Log.Write(Title+": "+value);}
-        void Block(string message) {if(link==null)return;link.OnModLine("state 0");link.SetCapabilities(new string[0]);link.SetContext("");epoch="";lastCharacter=0;shieldUntil=DateTime.MinValue;Message(message);}
+        void Block(string message) {Block(message,true);}
+        void Block(string message,bool resetStability) {
+            if(link==null)return;
+            if(inbox!=null)foreach(var item in inbox.LocalPending()) {
+                string reason; if(!results.TryGetValue(item.Id,out reason))reason=message;
+                link.OnModLine("ack "+item.Id+" "+reason);
+            }
+            link.OnModLine("state 0");link.SetCapabilities(new string[0]);link.SetContext("");epoch="";shieldUntil=DateTime.MinValue;
+            if(resetStability)contextGate.Reset();Message(message);
+        }
+        bool CheckLog() {
+            if(logGuard==null||!logGuard.Refresh()) {
+                Block(logGuard==null?"Registro de PCSX2 no disponible":logGuard.Message);
+                if(logGuard!=null&&logGuard.Latched)link.SetPaused(true);
+                return false;
+            }
+            if(logGeneration!=logGuard.Generation) {logGeneration=logGuard.Generation;Block("Partida en transición; verificando de nuevo");return false;}
+            return true;
+        }
         internal static bool ValidMeter(float value,float maximum) {return !float.IsNaN(value)&&!float.IsInfinity(value)&&!float.IsNaN(maximum)&&!float.IsInfinity(maximum)&&maximum>=1&&maximum<=1000&&value>0&&value<=maximum;}
         void Poll()
         {
             if(!Monitor.TryEnter(gate))return;
             try {
                 if(!Running)return;
+                if(!CheckLog())return;
+                if(link.Paused) {Block("Efectos en pausa; la partida se verificará al reanudar");return;}
+                if(inbox==null||!inbox.LocalConnected) {Block("Conecta Game Link a Cloud90 para habilitar los efectos");return;}
                 using(var pine=new Pine(28011)) {
                     if(pine.Status()!=0) {Block("PCSX2 en pausa o sin juego");return;}
                     string serial=pine.Text(12),crc=pine.Text(13);
                     if(!profile.Identity(serial,crc)) {Block("Revisión no compatible: se requiere "+profile.Serial+" / "+profile.Crc);return;}
                     uint player,character;
                     if(!profile.Character(pine,out player,out character)) {Block("Esperando una partida controlable con Kratos vivo");return;}
-                    if(epoch==""||lastCharacter!=character||identity!=serial+crc) {epoch=Guid.NewGuid().ToString("N");shieldUntil=DateTime.MinValue;}
-                    lastCharacter=character;identity=serial+crc;
-                    link.SetContext(epoch);link.SetCapabilities(profile.Capabilities(pine));link.OnModLine("state 1");
+                    if(!contextGate.Observe(serial+crc,player,character)) {Block("Verificando que la partida esté estable…",false);return;}
+                    if(epoch!=contextGate.Epoch) {epoch=contextGate.Epoch;shieldUntil=DateTime.MinValue;}
+                    string[] capabilities=profile.Capabilities(pine);
+                    if(capabilities.Length==0) {Block("La partida cambió durante la verificación");return;}
+                    link.SetContext(epoch);link.SetCapabilities(capabilities);link.OnModLine("state 1");
                     Message(Title+" USA conectado · recursos y mejoras experimentales. No cargar estados durante la conexión.");
                     foreach(var item in inbox.LocalPending()) {
+                        if(!CheckLog())return;
+                        uint currentPlayer,currentCharacter;
+                        if(!profile.Character(pine,out currentPlayer,out currentCharacter)||currentPlayer!=player||currentCharacter!=character||epoch!=contextGate.Epoch) {Block("La partida cambió; comando cancelado");return;}
                         string cached;
                         if(results.TryGetValue(item.Id,out cached)) {link.OnModLine("ack "+item.Id+" "+cached);continue;}
                         if(results.Count>=2048) {link.OnModLine("ack "+item.Id+" reinicia la conexión de prueba");continue;}
@@ -90,6 +120,7 @@ namespace Cloud90.GameLink
                             uint current=profile.Orbs(pine);
                             if(current<=profile.OrbsMaximum) {
                                 uint target=GodOfWarEffects.OrbsTarget(item.Effect,current,profile.OrbsMaximum);
+                                if(target==current) {results[item.Id]="Orbes en el límite; no hubo cambios";link.OnModLine("ack "+item.Id+" "+results[item.Id]);continue;}
                                 if(profile.IsTwo)pine.Write32(profile.OrbsAddress,target);else pine.Write16(profile.OrbsAddress,(ushort)target);
                                 result=profile.Orbs(pine)==target?"ok":"resultado incierto; no se repite";
                             } else result="contador de orbes no compatible";

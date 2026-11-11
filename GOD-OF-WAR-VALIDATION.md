@@ -2,6 +2,8 @@
 
 2026-11-10. Branch: feat/god-of-war-cloud90. Client protocol version: 1.8.0-dev.
 
+Update: SAFETY-VALIDATION.md records dedicated-log guards, I's script/finisher rejection, stable-context rearming, clearer outcomes and real isolated save/load tests for both games. These do not validate combat effects or every special scene.
+
 ## Implemented
 
 - Local-only PINE transport, bounded responses, fragmented reads, timeouts and strict address limits.

@@ -59,6 +59,7 @@ namespace Cloud90.GameLink
             return result.ToArray();
         }
         internal static string SetFloat(Pine pine,uint address,float value) {
+            if(pine.ReadFloat(address)==value)return "El medidor ya estaba en el límite; no hubo cambios";
             pine.WriteFloat(address,value);
             float actual=pine.ReadFloat(address);
             return !float.IsNaN(actual)&&Math.Abs(actual-value)<0.01f?"ok":"resultado incierto; no se repite";

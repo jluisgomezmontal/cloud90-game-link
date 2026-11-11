@@ -2,6 +2,8 @@
 
 Branch/PR set: feat/god-of-war-cloud90, alongside GoW I. Both client and backend require CLOUD90_GOW_EXPERIMENTAL=1. This is a local test build, not a stable compatibility claim.
 
+Update: SAFETY-VALIDATION.md records dedicated-log guards, stable-context rearming, confirmed-only announcements and real isolated save/load tests for both games. Combat effects and exhaustive cinematic/QTE coverage remain unvalidated.
+
 ## Implemented
 
 - Shared PCSX2 host/transport with an independent II profile and exact serial/CRC checks.

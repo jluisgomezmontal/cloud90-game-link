@@ -31,6 +31,11 @@ namespace Cloud90.GameLink
             character=p.Read32(player);
             if(!Pointer(character)||p.Read32(character+4)!=Vtable)return false;
             if(!IsTwo&&(character<0x00795800||character>=0x0079b800))return false;
+            if(!IsTwo) {
+                if(p.Read32(player+0x10)!=0)return false;
+                uint animation=p.Read32(character+0x324);
+                if(!Pointer(animation)||p.Read32(animation+0x84)!=0)return false;
+            }
             return GodOfWarHost.ValidMeter(p.ReadFloat(character+0x178),p.ReadFloat(character+0x17c));
         }
         internal float MagicMaximum(IPineMemory p) {
@@ -56,12 +61,21 @@ namespace Cloud90.GameLink
         }
         static bool FiniteMaximum(float v) {return !float.IsNaN(v)&&!float.IsInfinity(v)&&v>=100&&v<=200;}
         internal string[] Capabilities(IPineMemory p) {
-            var caps=new List<string>{"heal","damage","heal_max","kill","shield"};
-            if(MagicMaximum(p)>0)caps.AddRange(new[]{"magic_add","magic_remove","magic_max","magic_empty"});
+            uint player,character;
+            if(!Character(p,out player,out character))return new string[0];
+            var caps=new List<string>{"kill","shield"};
+            float hp=p.ReadFloat(character+0x178),hpMax=p.ReadFloat(character+0x17c);
+            if(hp<hpMax)caps.AddRange(new[]{"heal","heal_max"});
+            if(hp>1)caps.Add("damage");
+            float magicMax=MagicMaximum(p),magic=p.ReadFloat(MagicAddress);
+            if(magicMax>0&&!float.IsNaN(magic)&&magic>=0&&magic<=magicMax) {
+                if(magic<magicMax)caps.AddRange(new[]{"magic_add","magic_max"});
+                if(magic>0)caps.AddRange(new[]{"magic_remove","magic_empty"});
+            }
             float rage=p.ReadFloat(RageAddress);
-            if(!float.IsNaN(rage)&&rage>=0&&rage<=100)caps.AddRange(new[]{"rage_max","rage_empty"});
-            if(Orbs(p)<=OrbsMaximum)caps.AddRange(new[]{"orbs_add","orbs_remove"});
-            if(IsTwo) {float amulet=p.ReadFloat(0x00335844);if(!float.IsNaN(amulet)&&amulet>=0&&amulet<=100)caps.Add("amulet_max");}
+            if(!float.IsNaN(rage)&&rage>=0&&rage<=100) {if(rage<100)caps.Add("rage_max");if(rage>0)caps.Add("rage_empty");}
+            uint orbs=Orbs(p);if(orbs<=OrbsMaximum) {if(orbs<OrbsMaximum)caps.Add("orbs_add");if(orbs>0)caps.Add("orbs_remove");}
+            if(IsTwo) {float amulet=p.ReadFloat(0x00335844);if(!float.IsNaN(amulet)&&amulet>=0&&amulet<100)caps.Add("amulet_max");}
             // II's upgrade structures are independent and not mapped yet.
             if(!IsTwo)caps.AddRange(new[]{"blades_min","blades_max","levels_min","levels_max"});
             return caps.ToArray();

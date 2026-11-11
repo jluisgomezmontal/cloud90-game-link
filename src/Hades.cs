@@ -183,6 +183,7 @@ namespace Cloud90.GameLink
         {
             lock(gate) { return disposed || paused || !connected ? new Item[0] : items.ToArray(); }
         }
+        internal bool LocalConnected {get {lock(gate) {return connected&&!disposed;}}}
 
         public Item Take(string id)
         {

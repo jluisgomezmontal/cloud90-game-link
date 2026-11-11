@@ -27,12 +27,33 @@ namespace Cloud90.GameLink {
             int displacement=0x67ff00-0x680004;m.Words[0x680004]=unchecked((uint)(displacement<<12));m.Words[0x67ff08]=200u<<16;
             Assert(two.MagicMaximum(m)==200,"signed relative max table and upper halfword");
             m.Words[0x335864]=0;Assert(two.MagicMaximum(m)==0,"locked magic");m.Words[0x335864]=5u<<24;
-            m.Float(two.RageAddress,100);m.Words[two.OrbsAddress]=0;m.Float(0x00335844,0);Assert(Array.IndexOf(two.Capabilities(m),"magic_max")>=0,"II magic capability");
+            m.Float(two.MagicAddress,0);m.Float(two.RageAddress,100);m.Words[two.OrbsAddress]=0;m.Float(0x00335844,0);Assert(Array.IndexOf(two.Capabilities(m),"magic_max")>=0,"II magic capability");
+            Assert(Array.IndexOf(two.Capabilities(m),"heal_max")<0,"full health not offered");
+            Assert(Array.IndexOf(two.Capabilities(m),"magic_empty")<0,"empty magic not offered");
+            Assert(Array.IndexOf(two.Capabilities(m),"rage_max")<0,"full rage not offered");
+            Assert(Array.IndexOf(two.Capabilities(m),"orbs_remove")<0,"empty currency not offered");
             Assert(Array.IndexOf(two.Capabilities(m),"amulet_max")>=0,"II amulet");
             Assert(one.OrbsAddress!=two.OrbsAddress,"separate orb counters");
             m.Words[two.OrbsAddress]=1000000;Assert(Array.IndexOf(two.Capabilities(m),"orbs_add")<0,"invalid counter");m.Words[two.OrbsAddress]=0;
             Assert(Array.IndexOf(two.Capabilities(m),"levels_max")<0,"II unmapped upgrades rejected");
             m.Words[0x67ff08]=65535u<<16;Assert(two.MagicMaximum(m)==0,"negative maximum rejected");
+            var first=new FakeMemory();first.Words[one.PlayerAddress]=0xd534c0;first.Words[one.ModeAddress]=11;first.Words[0xd534c0]=0x795800;first.Words[0xd534d0]=0;first.Words[0x795804]=one.Vtable;first.Float(0x795978,100);first.Float(0x79597c,100);first.Words[0x795b24]=0x800000;first.Words[0x800084]=0;
+            Assert(one.Character(first,out player,out character),"I gameplay");first.Words[0xd534d0]=1;Assert(!one.Character(first,out player,out character),"I scripted hold");first.Words[0xd534d0]=0;first.Words[0x800084]=1;Assert(!one.Character(first,out player,out character),"I finisher");
+        }
+        static void Safety() {
+            var gate=new GodOfWarContextGate();
+            Assert(!gate.Observe("II",10,20)&&!gate.Observe("II",10,20)&&gate.Observe("II",10,20),"three stable observations");
+            string epoch=gate.Epoch;Assert(gate.Observe("II",10,20)&&gate.Epoch==epoch,"stable epoch");
+            gate.Reset();Assert(!gate.Observe("II",10,20)&&!gate.Observe("II",10,20)&&gate.Observe("II",10,20)&&gate.Epoch!=epoch,"new transition epoch");
+            Assert(!gate.Observe("II",11,20),"player replacement invalidates");
+            string file=Path.GetTempFileName();
+            try {
+                var guard=new Pcsx2LogGuard(file);Assert(!guard.Refresh(),"empty log blocks");File.AppendAllText(file,"boot\n");Assert(guard.Refresh(),"verified log");
+                File.AppendAllText(file,"(VMManager) Pausing...\n");Assert(guard.Refresh()&&guard.Generation==1,"pause invalidates generation");Assert(guard.Refresh()&&guard.Generation==1,"no duplicate events");
+                File.AppendAllText(file,"  Loading SP");Assert(guard.Refresh(),"partial load line");File.AppendAllText(file,"U2\n");Assert(!guard.Refresh()&&guard.Latched,"split native state-load log");
+                File.WriteAllText(file,"boot\n");Assert(!guard.Refresh(),"manual resume cannot bypass load latch");
+            }finally {File.Delete(file);}
+            file=Path.GetTempFileName();try {File.WriteAllText(file,"long initial log\n");var guard=new Pcsx2LogGuard(file);Assert(guard.Refresh(),"initial log");File.WriteAllText(file,"x");Assert(!guard.Refresh()&&guard.Latched,"truncated log blocks");}finally {File.Delete(file);}
         }
         static void Assert(bool condition,string message) {if(!condition)throw new Exception(message);}
         static byte[] Exact(NetworkStream s,int n) {var b=new byte[n];int done=0;while(done<n){int count=s.Read(b,done,n-done);if(count==0)throw new EndOfStreamException();done+=count;}return b;}
@@ -46,6 +67,8 @@ namespace Cloud90.GameLink {
         static int Main() {
             try {
                 Profiles();
+                Safety();
+                Case(new byte[]{9,0,0,0,0,0,0,200,66},p=>Assert(GodOfWarEffects.SetFloat(p,0x100000,100).Contains("límite"),"no write or false success at limit"));
                 Assert(GodOfWarEffects.OrbsTarget("orbs_add",59900,60000)==60000,"orb cap");
                 Assert(GodOfWarEffects.OrbsTarget("orbs_remove",100,60000)==0,"orb floor");
                 Assert(GodOfWarEffects.Policy("orbs_remove",true,true,true)!=null,"orb shield");

@@ -224,7 +224,7 @@ namespace Cloud90.GameLink
                     // Effects the game didn't answer: refused, as Nebula would.
                     if (inbox != null)
                         foreach (Inbox.Item old in inbox.Expire(AckTimeout))
-                            await Ack(old.Id, false, "no disponible ahora");
+                            await Ack(old.Id, false, Game == "gow1" || Game == "gow2" ? "resultado incierto; no se recibió confirmación" : "no disponible ahora");
                 }
             }
             catch (Exception) { }
@@ -364,6 +364,8 @@ namespace Cloud90.GameLink
         public void SetPaused(bool value)
         {
             paused = value;
+            if(value && inbox!=null && (Game=="gow1"||Game=="gow2"))
+                foreach(var item in inbox.LocalPending())OnModLine("ack "+item.Id+" resultado incierto; pausa solicitada, no se repite");
             if (inbox != null) inbox.SetPaused(value);
             SetStatus(value ? "efectos en pausa" : "efectos activos");
             Fire(SendState());
