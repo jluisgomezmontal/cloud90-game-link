@@ -1,4 +1,6 @@
 dist/
+mod/wukong/bin/
+mod/wukong/obj/
 mod/blasphemous/bin/
 mod/blasphemous/obj/
 mod/celeste/bin/

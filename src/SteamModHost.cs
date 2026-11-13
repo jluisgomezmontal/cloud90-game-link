@@ -23,7 +23,7 @@ namespace Cloud90.GameLink
         protected virtual bool ReportsPause { get { return false; } }
         string OwnedHash { get { return "cloud90-" + Id + "-owned.txt"; } }
         string DataRoot { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Cloud90GameLink", Id); } }
-        protected string Executable(string path) { return Path.Combine(path, ProcessName + ".exe"); }
+        protected virtual string Executable(string path) { return Path.Combine(path, ProcessName + ".exe"); }
         protected bool IsGame(string path) { return !string.IsNullOrEmpty(path) && File.Exists(Executable(path)); }
         protected static bool HasPackage(string name) { return Assembly.GetExecutingAssembly().GetManifestResourceInfo(name) != null; }
         static readonly Regex SessionId = new Regex("^[a-f0-9]{32}$");
