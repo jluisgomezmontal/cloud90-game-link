@@ -29,7 +29,7 @@ namespace Cloud90.Blasphemous {
             {"heal",15},{"health_max",45},{"damage",30},{"fervour_add",20},{"fervour_max",45},
             {"fervour_empty",45},{"flask_add",45},{"flask_remove",60},{"shield",30},{"kill",120},
             {"sword_boost",45},{"sword_weak",45},{"slow",45},{"no_dash",45},{"invulnerable",60},
-            {"tears_add",60},{"tears_remove",60},{"ambush",90}
+            {"tears_add",60},{"tears_remove",60},{"ambush",0}
         };
         private static readonly Dictionary<string,string> Enemies = new Dictionary<string,string> {
             {"flagellant","EN01"},{"stoner","EN05"},{"bell_ghost","EN04"}
@@ -285,7 +285,7 @@ namespace Cloud90.Blasphemous {
                     break;
             }
             if (!changed) return "medidor al límite";
-            cooldowns[effect] = now + (ulong)cooldown * 1000;
+            if (cooldown > 0) cooldowns[effect] = now + (ulong)cooldown * 1000;
             return effect == "ambush" ? null : "ok";
         }
 
