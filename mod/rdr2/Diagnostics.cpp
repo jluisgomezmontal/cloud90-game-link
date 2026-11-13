@@ -11,8 +11,10 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <list>
 #include <string_view>
 #include <unordered_set>
+#include <vector>
 
 #include "../gtasa/vendor/json.hpp"
 
@@ -71,6 +73,7 @@ constexpr UINT64 GetEntityModel = 0xDA76A9F39210D365;
 constexpr UINT64 BelongsToScript = 0x622B1980CBE13332;
 constexpr UINT64 SetMissionEntity = 0xDC19C288082E586E;
 constexpr UINT64 EquipOutfitPreset = 0x77FF8D35EEC6BBC4;
+constexpr UINT64 UpdatePedVariation = 0xCC8CA3E88256E58F;
 constexpr UINT64 GiveWeaponToPed = 0x5E3BDDBCB83F3D84;
 constexpr UINT64 TaskCombatPed = 0xF166E48407BAC484;
 constexpr UINT64 IsPedInCombat = 0x4859F1FC66A6278E;
@@ -287,7 +290,6 @@ constexpr std::array EnemyOptions{
     EnemyOption{"wolf", GameHash("a_c_wolf"), 0, VK_F3},
     EnemyOption{"bear", GameHash("a_c_bear_01"), 0, VK_F4},
     EnemyOption{"vampire", GameHash("cs_vampire"), GameHash("weapon_melee_knife_vampire"), VK_F5},
-    EnemyOption{"micah", GameHash("cs_micahbell"), GameHash("weapon_revolver_doubleaction_micah"), VK_F6},
     EnemyOption{"caveman", GameHash("a_m_m_unicorpse_01"), GameHash("weapon_melee_ancient_hatchet"), VK_F7, 45},
     EnemyOption{"colm", GameHash("cs_colmodriscoll"), GameHash("weapon_repeater_carbine"), VK_F8},
     EnemyOption{"milton", GameHash("cs_miltonandrews"), GameHash("weapon_rifle_boltaction"), VK_F9},
@@ -300,11 +302,10 @@ static_assert(EnemyOptions[1].model == 0x1973FE45);
 static_assert(EnemyOptions[2].model == 0xBBD91DDA);
 static_assert(EnemyOptions[3].model == 0xBCFD0E7F);
 static_assert(EnemyOptions[4].model == 0xD95BCB7D && EnemyOptions[4].weapon == 0x14D3F94D);
-static_assert(EnemyOptions[5].model == 0xDE361D65 && EnemyOptions[5].weapon == 0x02300C65);
-static_assert(EnemyOptions[6].model == 0x4C6C6086 && EnemyOptions[6].weapon == 0x21CCCA44);
-static_assert(EnemyOptions[7].model == 0xCF10E769 && EnemyOptions[8].model == 0x01004B26);
-static_assert(EnemyOptions[9].model == 0x074B53CC && EnemyOptions[10].model == 0x056154F7 &&
-              EnemyOptions[11].model == 0x8F361781);
+static_assert(EnemyOptions[5].model == 0x4C6C6086 && EnemyOptions[5].weapon == 0x21CCCA44);
+static_assert(EnemyOptions[6].model == 0xCF10E769 && EnemyOptions[7].model == 0x01004B26);
+static_assert(EnemyOptions[8].model == 0x074B53CC && EnemyOptions[9].model == 0x056154F7 &&
+              EnemyOptions[10].model == 0x8F361781);
 
 std::string ViewerLabel(const std::string& name) {
     // The JSON parser validates UTF-8. Keep complete code points and exclude HUD markup.
@@ -324,7 +325,10 @@ std::string ViewerLabel(const std::string& name) {
     return label.substr(first, label.find_last_not_of(' ') - first + 1);
 }
 
-const char* FindEnemyPosition(int target, NativeVector& position, bool nearWater) {
+using AmbushPositions = std::vector<NativeVector>;
+
+const char* FindEnemyPosition(int target, NativeVector& position, bool nearWater,
+                              const AmbushPositions& occupied) {
     constexpr UINT64 ProbeWater = 0x2B3451FA1E3142E2;
     constexpr UINT64 GroundHeight = 0x24FA4267BB8D2431;
     if (ReadNative(IsEntityInWater, target)) return "sal del agua para iniciar la emboscada";
@@ -336,6 +340,8 @@ const char* FindEnemyPosition(int target, NativeVector& position, bool nearWater
         {-.707f,-.707f,0},{.707f,-.707f,0},{-.707f,.707f,0},{.707f,.707f,0}
     }};
     bool foundGround = false;
+    bool foundFallback = false;
+    NativeVector fallback{};
     auto valid = [&](const NativeVector& point) {
         const float distance = std::hypot(point.x - origin.x, point.y - origin.y);
         if (!(distance >= 10 && distance <= 32 && std::abs(point.z - origin.z) <= 5)) return false;
@@ -351,11 +357,22 @@ const char* FindEnemyPosition(int target, NativeVector& position, bool nearWater
         }
         return false;
     };
+    auto separated = [&](const NativeVector& point) {
+        if (std::none_of(occupied.begin(), occupied.end(), [&](const NativeVector& other) {
+            return std::hypot(point.x - other.x, point.y - other.y) < 5.0f;
+        })) return true;
+        if (!foundFallback) {
+            fallback = point;
+            foundFallback = true;
+        }
+        return false;
+    };
     for (const float radius : {18.0f, 25.0f, 12.0f}) {
         for (const auto& direction : directions) {
             const NativeVector probe{origin.x + direction.x * radius, origin.y + direction.y * radius, origin.z};
             NativeVector candidate{};
-            if (ReadNative(GetSafeCoord, probe.x, probe.y, probe.z, 1, &candidate, 0) && valid(candidate)) {
+            if (ReadNative(GetSafeCoord, probe.x, probe.y, probe.z, 1, &candidate, 0) &&
+                valid(candidate) && separated(candidate)) {
                 position = candidate;
                 return nullptr;
             }
@@ -379,10 +396,15 @@ const char* FindEnemyPosition(int target, NativeVector& position, bool nearWater
             }
             if (stable && valid(point)) {
                 point.z += .15f;
+                if (!separated(point)) continue;
                 position = point;
                 return nullptr;
             }
         }
+    }
+    if (foundFallback) {
+        position = fallback;
+        return nullptr;
     }
     return foundGround && nearWater ? "el caimán requiere una orilla cercana" :
         "sin suelo seco y estable cerca del jugador";
@@ -397,13 +419,13 @@ struct Ambush {
     ULONGLONG unavailableSince = 0;
     bool cleanup = false;
     bool reportedCombat = false;
-    std::string viewer;
+    std::string viewer, commandId;
+    ULONGLONG expires = 0;
 
     const char* Start(const EnemyOption& selected, const Sample& sample, ULONGLONG now, bool shielded,
                       const std::string& sender = {}) {
         if (sample.context != FreeRoam) return "out_of_context";
         if (shielded) return "shielded";
-        if (option) return "ya hay un enemigo de emboscada activo";
         if (!ReadNative(IsModelValid, selected.model) || !ReadNative(IsModelAPed, selected.model)) {
             return "model_unavailable";
         }
@@ -459,7 +481,8 @@ struct Ambush {
         CallNative(TextCenter, 0);
     }
 
-    const char* Tick(const Sample& sample, ULONGLONG now, bool shielded) {
+    const char* Tick(const Sample& sample, ULONGLONG now, bool shielded,
+                     const AmbushPositions& occupied) {
         if (!option) return nullptr;
         if (sample.context == "online") {
             cleanup = true;
@@ -501,11 +524,14 @@ struct Ambush {
         if (cleanup || sample.context != FreeRoam || sample.ped != target) failure = "context_changed";
         else if (shielded) failure = "shielded";
         else if (now >= deadline) failure = "model_timeout";
-        else if (!ReadNative(HasModelLoaded, option->model)) return nullptr;
+        else if (!ReadNative(HasModelLoaded, option->model)) {
+            CallNative(RequestModel, option->model, 0);
+            return nullptr;
+        }
 
         if (!failure) {
             NativeVector position{};
-            failure = FindEnemyPosition(target, position, option->model == GameHash("a_c_alligator_01"));
+            failure = FindEnemyPosition(target, position, option->model == GameHash("a_c_alligator_01"), occupied);
             if (!failure) {
                 enemy = ReadNative(CreatePed, option->model, position.x, position.y, position.z, 0.0f, 0, 1, 0, 0);
                 if (!enemy || !ReadNative(DoesEntityExist, enemy)) failure = "spawn_failed";
@@ -521,6 +547,7 @@ struct Ambush {
 
         CallNative(SetMissionEntity, enemy, 1, 0);
         CallNative(EquipOutfitPreset, enemy, option->outfit, 0);
+        if (option->outfit) CallNative(UpdatePedVariation, enemy, 0, 1, 1, 1, 0);
         if (ReadNative(IsEntityInWater, enemy)) {
             cleanup = true;
             return "unsafe_spawn";
@@ -535,6 +562,20 @@ struct Ambush {
         return "spawned";
     }
 };
+
+using Ambushes = std::list<Ambush>;
+
+const char* TickAmbush(Ambush& ambush, const Ambushes& ambushes, const Sample& sample,
+                       ULONGLONG now, bool shielded) {
+    AmbushPositions occupied{};
+    if (!ambush.enemy) {
+        for (const auto& other : ambushes) {
+            if (other.option && other.enemy && other.OwnsEnemy())
+                occupied.push_back(ReadVector(GetEntityCoords, other.enemy, 1, 0));
+        }
+    }
+    return ambush.Tick(sample, now, shielded, occupied);
+}
 
 EffectResult ModifyWanted(const Sample& sample, bool start) {
     const int player = ReadNative(PlayerId);
@@ -578,15 +619,15 @@ using Json = nlohmann::json;
 
 class LiveBridge {
     std::filesystem::path directory;
-    std::string session, epoch, ambushId;
+    std::string session, epoch;
     std::unordered_set<std::string> seen;
     Json acks = Json::array();
     unsigned generation = 0;
     int lastPed = 0;
     ULONGLONG nextPoll = 0, shieldUntil = 0;
-    ULONGLONG ambushExpires = 0, inboxMissingSince = 0;
+    ULONGLONG inboxMissingSince = 0;
     std::array<ULONGLONG, PreviewEffects.size()> availableAt{};
-    Ambush ambush;
+    Ambushes ambushes;
 
     static bool ValidId(const std::string& id) {
         return !id.empty() && id.size() <= 80 && id.find_first_not_of(
@@ -637,10 +678,12 @@ class LiveBridge {
             const auto choice = std::find_if(EnemyOptions.begin(), EnemyOptions.end(),
                 [&](const EnemyOption& option) { return arg == option.id; });
             if (choice == EnemyOptions.end()) return "enemigo desconocido";
+            Ambush ambush;
             const char* result = ambush.Start(*choice, sample, now, now < shieldUntil, command.value("by", ""));
             if (std::string_view(result) != "loading_model") return result;
-            ambushId = id;
-            ambushExpires = expires;
+            ambush.commandId = id;
+            ambush.expires = expires;
+            ambushes.push_back(std::move(ambush));
             return nullptr;
         }
         for (size_t index = 0; index < PreviewEffects.size(); ++index) {
@@ -674,7 +717,9 @@ public:
 
     bool Active() const { return !session.empty(); }
 
-    void DrawViewer(const Sample& sample) const { ambush.DrawViewer(sample); }
+    void DrawViewer(const Sample& sample) const {
+        for (const auto& ambush : ambushes) ambush.DrawViewer(sample);
+    }
 
     void Tick(const Sample& sample, ULONGLONG now) {
         const bool playing = sample.context == FreeRoam;
@@ -682,7 +727,9 @@ public:
         if (ped != lastPed || epoch.empty()) {
             epoch = session + "_" + std::to_string(++generation);
             shieldUntil = 0;
-            if (ambush.option && !ambush.enemy) ambush.cleanup = true;
+            for (auto& ambush : ambushes) {
+                if (ambush.option && !ambush.enemy) ambush.cleanup = true;
+            }
             lastPed = ped;
         }
         if (now < nextPoll) return;
@@ -701,25 +748,25 @@ public:
         }
         if (fresh) inboxMissingSince = 0;
         else if (!inboxMissingSince) inboxMissingSince = now;
-        if (paused) {
-            shieldUntil = 0;
-            if (ambush.option && (!ambush.enemy || fresh || now - inboxMissingSince >= 15000))
+        if (paused) shieldUntil = 0;
+        for (auto& ambush : ambushes) {
+            if (!ambush.option) continue;
+            if (paused && (!ambush.enemy || fresh || now - inboxMissingSince >= 15000))
                 ambush.cleanup = true;
-        }
-        if (ambush.option && !ambushId.empty() && now >= ambushExpires) {
-            if (!ambush.enemy) ambush.cleanup = true;
-            Ack(ambushId, ambush.enemy ? "resultado incierto; combate sin confirmar" : "caducado");
-            ambushId.clear();
-        }
-        if (ambush.option) {
-            const char* result = ambush.Tick(sample, now, now < shieldUntil);
-            if (result && !ambushId.empty() && std::string_view(result) != "spawned") {
+            if (!ambush.commandId.empty() && now >= ambush.expires) {
+                if (!ambush.enemy) ambush.cleanup = true;
+                Ack(ambush.commandId, ambush.enemy ? "resultado incierto; combate sin confirmar" : "caducado");
+                ambush.commandId.clear();
+            }
+            const char* result = TickAmbush(ambush, ambushes, sample, now, now < shieldUntil);
+            if (result && !ambush.commandId.empty() && std::string_view(result) != "spawned") {
                 const std::string_view outcome = result;
-                Ack(ambushId, outcome == "combat_confirmed" ? "ok" :
+                Ack(ambush.commandId, outcome == "combat_confirmed" ? "ok" :
                     outcome == "combat_unconfirmed" ? "resultado incierto; combate sin confirmar" : result);
-                ambushId.clear();
+                ambush.commandId.clear();
             }
         }
+        ambushes.remove_if([](const Ambush& ambush) { return !ambush.option; });
         if (fresh && inbox.contains("effects") && inbox["effects"].is_array() && inbox["effects"].size() <= 20) {
             for (const auto& command : inbox["effects"]) {
                 if (!command.is_object() || !command.contains("id") || !command["id"].is_string()) continue;
@@ -803,7 +850,7 @@ void ScriptMain() {
     std::array<bool, PreviewEffects.size()> held{};
     std::array<ULONGLONG, PreviewEffects.size()> availableAt{};
     std::array<bool, EnemyOptions.size()> enemyKeysHeld{};
-    Ambush ambush;
+    Ambushes ambushes;
     ULONGLONG shieldUntil = 0;
     ULONGLONG nextLog = 0;
     int lastPed = 0;
@@ -854,15 +901,20 @@ void ScriptMain() {
                     const bool pressed = down && !enemyKeysHeld[i];
                     enemyKeysHeld[i] = down;
                     if (pressed && GameHasFocus()) {
+                        Ambush ambush;
                         const char* result = ambush.Start(option, ReadContext(), now, now < shieldUntil);
+                        if (ambush.option) ambushes.push_back(std::move(ambush));
                         LogAmbush(logPath, now - start, option, result);
                     }
                 }
-                if (const auto* option = ambush.option) {
-                    if (const char* result = ambush.Tick(sample, now, now < shieldUntil)) {
+                for (auto& ambush : ambushes) {
+                    const auto* option = ambush.option;
+                    if (!option) continue;
+                    if (const char* result = TickAmbush(ambush, ambushes, sample, now, now < shieldUntil)) {
                         LogAmbush(logPath, now - start, *option, result);
                     }
                 }
+                ambushes.remove_if([](const Ambush& ambush) { return !ambush.option; });
             }
         }
         if (live.Active()) {
