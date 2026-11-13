@@ -161,7 +161,7 @@ namespace Cloud90.GameLink
                         socket = ws;
                     }
                     connectedAt = DateTime.UtcNow;
-                    await Send(new Dictionary<string, object> { { "type", "hello" }, { "game", Game }, { "version", Game == "celeste" ? "cloud90-game-link-celeste-1" : Game == "rdr2" ? "cloud90-game-link-rdr2-1" : Version } });
+                    await Send(new Dictionary<string, object> { { "type", "hello" }, { "game", Game }, { "version", Game == "celeste" ? "cloud90-game-link-celeste-1" : Game == "rdr2" ? "cloud90-game-link-rdr2-2" : Version } });
                     pinger = Ping(ws, connection.Token);
                     await Receive(ws, connection.Token);
                     if (ws.CloseStatus.HasValue && ws.CloseStatus.Value != WebSocketCloseStatus.Empty)

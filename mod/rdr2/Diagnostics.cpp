@@ -278,6 +278,7 @@ struct EnemyOption {
     UINT32 model;
     UINT32 weapon;
     int key;
+    int outfit = 0;
 };
 
 constexpr std::array EnemyOptions{
@@ -286,14 +287,45 @@ constexpr std::array EnemyOptions{
     EnemyOption{"wolf", GameHash("a_c_wolf"), 0, VK_F3},
     EnemyOption{"bear", GameHash("a_c_bear_01"), 0, VK_F4},
     EnemyOption{"vampire", GameHash("cs_vampire"), GameHash("weapon_melee_knife_vampire"), VK_F5},
+    EnemyOption{"micah", GameHash("cs_micahbell"), GameHash("weapon_revolver_doubleaction_micah"), VK_F6},
+    EnemyOption{"caveman", GameHash("a_m_m_unicorpse_01"), GameHash("weapon_melee_ancient_hatchet"), VK_F7, 45},
+    EnemyOption{"colm", GameHash("cs_colmodriscoll"), GameHash("weapon_repeater_carbine"), VK_F8},
+    EnemyOption{"milton", GameHash("cs_miltonandrews"), GameHash("weapon_rifle_boltaction"), VK_F9},
+    EnemyOption{"cave_hermit", GameHash("cs_cavehermit"), GameHash("weapon_melee_knife"), VK_F10},
+    EnemyOption{"cougar", GameHash("a_c_cougar_01"), 0, VK_F11},
+    EnemyOption{"alligator", GameHash("a_c_alligator_01"), 0, VK_F12},
 };
 static_assert(EnemyOptions[0].model == 0x19486791);
 static_assert(EnemyOptions[1].model == 0x1973FE45);
 static_assert(EnemyOptions[2].model == 0xBBD91DDA);
 static_assert(EnemyOptions[3].model == 0xBCFD0E7F);
 static_assert(EnemyOptions[4].model == 0xD95BCB7D && EnemyOptions[4].weapon == 0x14D3F94D);
+static_assert(EnemyOptions[5].model == 0xDE361D65 && EnemyOptions[5].weapon == 0x02300C65);
+static_assert(EnemyOptions[6].model == 0x4C6C6086 && EnemyOptions[6].weapon == 0x21CCCA44);
+static_assert(EnemyOptions[7].model == 0xCF10E769 && EnemyOptions[8].model == 0x01004B26);
+static_assert(EnemyOptions[9].model == 0x074B53CC && EnemyOptions[10].model == 0x056154F7 &&
+              EnemyOptions[11].model == 0x8F361781);
 
-bool FindEnemyPosition(int target, NativeVector& position) {
+std::string ViewerLabel(const std::string& name) {
+    // The JSON parser validates UTF-8. Keep complete code points and exclude HUD markup.
+    std::string label;
+    for (size_t pos = 0, count = 0; pos < name.size() && count < 28;) {
+        const auto ch = static_cast<unsigned char>(name[pos]);
+        const size_t length = ch < 0x80 ? 1 : ch < 0xE0 ? 2 : ch < 0xF0 ? 3 : 4;
+        if (length > name.size() - pos) break;
+        if (ch >= 32 && ch != 127 && ch != '~' && ch != '<' && ch != '>') {
+            label.append(name, pos, length);
+            ++count;
+        }
+        pos += length;
+    }
+    const auto first = label.find_first_not_of(' ');
+    if (first == std::string::npos) return {};
+    return label.substr(first, label.find_last_not_of(' ') - first + 1);
+}
+
+bool FindEnemyPosition(int target, NativeVector& position, bool nearWater) {
+    constexpr UINT64 ProbeWater = 0x2B3451FA1E3142E2;
     if (ReadNative(IsEntityInWater, target)) return false;
     const auto origin = ReadVector(GetEntityCoords, target, 1, 0);
     constexpr std::array<NativeVector, 4> offsets{{{0, -18, 0}, {-18, 0, 0}, {18, 0, 0}, {0, 18, 0}}};
@@ -304,6 +336,18 @@ bool FindEnemyPosition(int target, NativeVector& position) {
         const float distance = std::hypot(candidate.x - origin.x, candidate.y - origin.y);
         if (distance >= 12 && distance <= 26 && std::abs(candidate.z - origin.z) <= 4 &&
             ReadNative(HasPositionCollision, candidate.x, candidate.y, candidate.z)) {
+            if (nearWater) {
+                float surface = 0;
+                bool shore = false;
+                for (const auto& direction : offsets) {
+                    if (ReadNative(ProbeWater, candidate.x + direction.x / 3, candidate.y + direction.y / 3,
+                                   candidate.z + 2.0f, 0, &surface) && std::abs(surface - candidate.z) < 2.0f) {
+                        shore = true;
+                        break;
+                    }
+                }
+                if (!shore) continue;
+            }
             position = candidate;
             return true;
         }
@@ -320,8 +364,10 @@ struct Ambush {
     ULONGLONG availableAt = 0;
     bool cleanup = false;
     bool reportedCombat = false;
+    std::string viewer;
 
-    const char* Start(const EnemyOption& selected, const Sample& sample, ULONGLONG now, bool shielded) {
+    const char* Start(const EnemyOption& selected, const Sample& sample, ULONGLONG now, bool shielded,
+                      const std::string& sender = {}) {
         if (sample.context != FreeRoam) return "out_of_context";
         if (shielded) return "shielded";
         if (option) return "ambush_active";
@@ -330,6 +376,7 @@ struct Ambush {
             return "model_unavailable";
         }
         option = &selected;
+        viewer = ViewerLabel(sender);
         cleanup = false;
         target = sample.ped;
         deadline = now + 3000;
@@ -342,6 +389,42 @@ struct Ambush {
         return ReadNative(DoesEntityExist, enemy) &&
             static_cast<UINT32>(ReadNative(GetEntityModel, enemy)) == option->model &&
             ReadNative(BelongsToScript, enemy, 0);
+    }
+
+    void DrawViewer(const Sample& sample, ULONGLONG now) const {
+        constexpr UINT64 GetHeadCoords = 0x17C07FC640E86B4E;
+        constexpr UINT64 ProjectToScreen = 0xCB50D7AFCC8B0EC6;
+        constexpr UINT64 ClearLineOfSight = 0xFCDFF7B72D23A1AC;
+        constexpr UINT64 IsOnScreen = 0x613C15D5D8DB781F;
+        constexpr UINT64 MakeText = 0xFA925AC00EB830B9;
+        constexpr UINT64 TextScale = 0xA1253A3C870B6843;
+        constexpr UINT64 TextColor = 0x16FA5CE47F184F1E;
+        constexpr UINT64 TextCenter = 0xBE5261939FBECB8C;
+        constexpr UINT64 DrawText = 0x16794E044C9EFB58;
+        constexpr int HeadBone = 21030;
+        if (!option || !enemy || viewer.empty() || cleanup || now >= deadline ||
+            sample.context != FreeRoam || sample.ped != target || !OwnsEnemy() ||
+            ReadNative(IsEntityDead, enemy) || !ReadNative(IsOnScreen, enemy) ||
+            !ReadNative(ClearLineOfSight, target, enemy, 17)) return;
+        auto head = ReadVector(GetHeadCoords, enemy, HeadBone, 0.0f, 0.0f, 0.0f);
+        const auto origin = ReadVector(GetEntityCoords, enemy, 1, 0);
+        if (std::hypot(head.x - origin.x, head.y - origin.y) > 4 || std::abs(head.z - origin.z) > 4 ||
+            (head.x == origin.x && head.y == origin.y && head.z == origin.z)) {
+            NativeVector low{}, high{};
+            CallNative(0xDCB8DDD5D054A7E7ULL, option->model, &low, &high);
+            head = origin;
+            head.z += std::clamp(high.z, 0.3f, 3.0f);
+        }
+        float x = 0, y = 0;
+        if (!ReadNative(ProjectToScreen, head.x, head.y, head.z + 0.35f, &x, &y) ||
+            !(x > 0.04f && x < 0.96f && y > 0.03f && y < 0.96f)) return;
+        const auto text = reinterpret_cast<const char*>(*CallNative(MakeText, 10, "LITERAL_STRING", viewer.c_str()));
+        if (!text) return;
+        CallNative(TextCenter, 1);
+        CallNative(TextScale, 0.3f, 0.3f);
+        CallNative(TextColor, 255, 255, 255, 255);
+        CallNative(DrawText, text, x, y - 0.02f);
+        CallNative(TextCenter, 0);
     }
 
     const char* Tick(const Sample& sample, ULONGLONG now, bool shielded) {
@@ -384,7 +467,8 @@ struct Ambush {
 
         if (!failure) {
             NativeVector position{};
-            if (!FindEnemyPosition(target, position)) failure = "no_safe_position";
+            if (!FindEnemyPosition(target, position, option->model == GameHash("a_c_alligator_01")))
+                failure = "no_safe_position";
             else {
                 enemy = ReadNative(CreatePed, option->model, position.x, position.y, position.z, 0.0f, 0, 1, 0, 0);
                 if (!enemy || !ReadNative(DoesEntityExist, enemy)) failure = "spawn_failed";
@@ -399,7 +483,7 @@ struct Ambush {
         }
 
         CallNative(SetMissionEntity, enemy, 1, 0);
-        CallNative(EquipOutfitPreset, enemy, 0, 0);
+        CallNative(EquipOutfitPreset, enemy, option->outfit, 0);
         if (ReadNative(IsEntityInWater, enemy)) {
             cleanup = true;
             return "unsafe_spawn";
@@ -517,7 +601,7 @@ class LiveBridge {
             const auto choice = std::find_if(EnemyOptions.begin(), EnemyOptions.end(),
                 [&](const EnemyOption& option) { return arg == option.id; });
             if (choice == EnemyOptions.end()) return "enemigo desconocido";
-            const char* result = ambush.Start(*choice, sample, now, now < shieldUntil);
+            const char* result = ambush.Start(*choice, sample, now, now < shieldUntil, command.value("by", ""));
             if (std::string_view(result) != "loading_model") return result;
             ambushId = id;
             ambushExpires = expires;
@@ -553,6 +637,8 @@ public:
     }
 
     bool Active() const { return !session.empty(); }
+
+    void DrawViewer(const Sample& sample, ULONGLONG now) const { ambush.DrawViewer(sample, now); }
 
     void Tick(const Sample& sample, ULONGLONG now) {
         const bool playing = sample.context == FreeRoam;
@@ -615,7 +701,7 @@ public:
             }
             capabilities.push_back("bandit_ambush");
         }
-        WriteStatus({{"session", session}, {"bridgeVersion", "cloud90-rdr2-1"},
+        WriteStatus({{"session", session}, {"bridgeVersion", "cloud90-rdr2-2"},
                      {"pid", GetCurrentProcessId()}, {"heartbeatMs", now}, {"epoch", epoch},
                      {"inPlay", playing}, {"capabilities", capabilities}, {"acks", acks}});
     }
@@ -740,8 +826,11 @@ void ScriptMain() {
                 }
             }
         }
-        if (live.Active()) live.Tick(sample, now);
-        scriptWait(preview ? 0 : live.Active() ? 50 : 500);
+        if (live.Active()) {
+            live.Tick(sample, now);
+            live.DrawViewer(sample, now);
+        }
+        scriptWait(preview || live.Active() ? 0 : 500);
     }
 }
 }

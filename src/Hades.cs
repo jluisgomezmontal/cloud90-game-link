@@ -282,7 +282,7 @@ namespace Cloud90.GameLink
             {
                 double remaining = 10000 - (DateTime.UtcNow - i.Sent).TotalMilliseconds;
                 if (remaining <= 0) continue;
-                effects.Add(new { id = i.Id, effect = i.Effect, ms = i.Ms, arg = i.Arg, safe = i.Safe, epoch = i.Epoch, allowDestructive = i.AllowDestructive, expiresMs = now + (ulong)remaining });
+                effects.Add(new { id = i.Id, effect = i.Effect, ms = i.Ms, arg = i.Arg, by = i.By, safe = i.Safe, epoch = i.Epoch, allowDestructive = i.AllowDestructive, expiresMs = now + (ulong)remaining });
             }
             string text = new JavaScriptSerializer().Serialize(new { session = session, heartbeatMs = now, paused = paused || !connected, noDeath = noDeath, allowDestructive = allowDestructive, effects = effects });
             try {
