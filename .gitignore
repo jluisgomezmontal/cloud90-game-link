@@ -1,4 +1,6 @@
 dist/
+mod/blasphemous/bin/
+mod/blasphemous/obj/
 mod/celeste/bin/
 mod/celeste/obj/
 node_modules/

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net35</TargetFramework>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" GeneratePathProperty="true" />
+    <EmbeddedResource Include="$(PkgNewtonsoft_Json)/lib/net35/Newtonsoft.Json.dll" LogicalName="Cloud90.Newtonsoft.Json.dll" />
+    <Reference Include="$(GameManaged)/*.dll" Exclude="$(GameManaged)/mscorlib.dll;$(GameManaged)/System*.dll;$(GameManaged)/Mono.Security.dll" Private="false" />
+    <Reference Include="$(LoaderCore)/BepInEx.dll;$(LoaderCore)/0Harmony.dll" Private="false" />
+  </ItemGroup>
+</Project>
