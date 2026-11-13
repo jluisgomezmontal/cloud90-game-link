@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$BaseExecutable, [string]$Rdr2SdkPath, [string]$CelesteEverestLib, [string]$Dotnet = 'dotnet', [string]$BlasphemousManaged, [string]$BlasphemousLoaderCore, [string]$WukongRefs)
+param([Parameter(Mandatory=$true)][string]$BaseExecutable, [string]$Rdr2SdkPath, [string]$CelesteEverestLib, [string]$Dotnet = 'dotnet', [string]$BlasphemousManaged, [string]$BlasphemousLoaderCore, [string]$WukongRefs, [switch]$RebuildGta)
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
 $base = [Reflection.Assembly]::LoadFile((Resolve-Path -LiteralPath $BaseExecutable).Path)
@@ -20,6 +20,13 @@ $scripts = @{'Cloud90.lua'='mod\Cloud90.lua';'Cloud90.Smw.lua'='mod\smw\Cloud90.
 foreach($name in $scripts.Keys) { $resources[$name] = Join-Path $root $scripts[$name] }
 foreach($art in Get-ChildItem (Join-Path $root 'assets') -File | Where-Object Extension -in '.png','.jpg','.ico') { $resources['Art.'+$art.Name] = $art.FullName }
 $outputName = 'Cloud90GameLink-GowPreview.exe'
+if ($RebuildGta) {
+    & (Join-Path $root 'mod\gtasa\build.ps1')
+    $resources['Cloud90.GTASA.asi'] = Join-Path $root 'mod\gtasa\dist\Cloud90.GTASA.asi'
+    $resources['GTASA.dinput8.dll'] = Join-Path $root 'mod\gtasa\dist\dinput8.dll'
+    $resources['GTASA.Notices.txt'] = Join-Path $root 'mod\gtasa\THIRD-PARTY-NOTICES.txt'
+    $outputName = 'Cloud90GameLink.exe'
+}
 if ($Rdr2SdkPath) {
     & (Join-Path $root 'mod\rdr2\build.ps1') -SdkPath $Rdr2SdkPath
     $resources['Cloud90.RDR2.Diagnostics.asi'] = Join-Path $root 'mod\rdr2\dist\Cloud90.RDR2.Diagnostics.asi'
@@ -50,4 +57,4 @@ foreach($name in $resources.Keys) { $argsList += '/resource:'+$resources[$name]+
 $argsList += @(Get-ChildItem (Join-Path $root 'src') -Filter *.cs | ForEach-Object FullName)
 & (Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe') @argsList
 if ($LASTEXITCODE -ne 0) { throw 'Preview compilation failed' }
-Write-Output "Built dist\$outputName (unsigned experimental preview)"
+Write-Output "Built dist\$outputName (unsigned)"
