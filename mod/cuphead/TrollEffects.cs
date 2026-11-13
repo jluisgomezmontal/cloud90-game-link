@@ -249,7 +249,6 @@ namespace Cloud90.Cuphead
         string SpawnEnemies(int count)
         {
             for (int i = spawned.Count - 1; i >= 0; i--) if (spawned[i].actor == null) { DestroySpawn(spawned[i]); spawned.RemoveAt(i); }
-            if (spawned.Count + count > 3) return "limite de refuerzos activos";
             var prefab = EnemyProvider();
             if (prefab == null || CupheadLevelCamera.Current == null) return "sin enemigo compatible en este nivel";
             Rect bounds = CupheadLevelCamera.Current.Bounds;

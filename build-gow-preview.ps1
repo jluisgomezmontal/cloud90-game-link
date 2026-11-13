@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$BaseExecutable, [string]$Rdr2SdkPath, [string]$CelesteEverestLib, [string]$Dotnet = 'dotnet', [string]$BlasphemousManaged, [string]$BlasphemousLoaderCore, [string]$WukongRefs, [switch]$RebuildGta)
+param([Parameter(Mandatory=$true)][string]$BaseExecutable, [string]$Rdr2SdkPath, [string]$CelesteEverestLib, [string]$Dotnet = 'dotnet', [string]$BlasphemousManaged, [string]$BlasphemousLoaderCore, [string]$WukongRefs, [switch]$RebuildGta, [string]$CupheadGameDir, [string]$CupheadBepInExDir)
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
 $base = [Reflection.Assembly]::LoadFile((Resolve-Path -LiteralPath $BaseExecutable).Path)
@@ -20,6 +20,11 @@ $scripts = @{'Cloud90.lua'='mod\Cloud90.lua';'Cloud90.Smw.lua'='mod\smw\Cloud90.
 foreach($name in $scripts.Keys) { $resources[$name] = Join-Path $root $scripts[$name] }
 foreach($art in Get-ChildItem (Join-Path $root 'assets') -File | Where-Object Extension -in '.png','.jpg','.ico') { $resources['Art.'+$art.Name] = $art.FullName }
 $outputName = 'Cloud90GameLink-GowPreview.exe'
+if ($CupheadGameDir) {
+    & (Join-Path $root 'mod\cuphead\build.ps1') -GameDir $CupheadGameDir -BepInExDir $CupheadBepInExDir -JsonDll $resources['Cuphead.Newtonsoft.Json.dll']
+    $resources['Cloud90.Cuphead.dll'] = Join-Path $root 'mod\cuphead\dist\Cloud90.Cuphead.dll'
+    $outputName = 'Cloud90GameLink.exe'
+}
 if ($RebuildGta) {
     & (Join-Path $root 'mod\gtasa\build.ps1')
     $resources['Cloud90.GTASA.asi'] = Join-Path $root 'mod\gtasa\dist\Cloud90.GTASA.asi'
