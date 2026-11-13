@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$BaseExecutable, [string]$Rdr2SdkPath, [string]$CelesteEverestLib, [string]$Dotnet = 'dotnet')
+param([Parameter(Mandatory=$true)][string]$BaseExecutable, [string]$Rdr2SdkPath, [string]$CelesteEverestLib, [string]$Dotnet = 'dotnet', [string]$BlasphemousManaged, [string]$BlasphemousLoaderCore, [string]$WukongRefs)
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
 $base = [Reflection.Assembly]::LoadFile((Resolve-Path -LiteralPath $BaseExecutable).Path)
@@ -28,6 +28,21 @@ if ($Rdr2SdkPath) {
 if ($CelesteEverestLib) {
     & (Join-Path $root 'mod\celeste\build.ps1') -EverestLib $CelesteEverestLib -Dotnet $Dotnet
     $resources['Cloud90.Celeste.zip'] = Join-Path $root 'mod\celeste\dist\Cloud90.Celeste.zip'
+    $outputName = 'Cloud90GameLink.exe'
+}
+if ($BlasphemousManaged) {
+    $managed = (Resolve-Path -LiteralPath $BlasphemousManaged).Path
+    $loader = (Resolve-Path -LiteralPath $BlasphemousLoaderCore).Path
+    & $Dotnet build (Join-Path $root 'mod\blasphemous\Cloud90.Blasphemous.csproj') -c Release "-p:GameManaged=$managed" "-p:LoaderCore=$loader"
+    if ($LASTEXITCODE -ne 0) { throw 'Blasphemous mod build failed' }
+    $resources['Cloud90.Blasphemous.dll'] = Join-Path $root 'mod\blasphemous\bin\Release\net35\Cloud90.Blasphemous.dll'
+    $outputName = 'Cloud90GameLink.exe'
+}
+if ($WukongRefs) {
+    $refs = (Resolve-Path -LiteralPath $WukongRefs).Path
+    & $Dotnet build (Join-Path $root 'mod/wukong/Cloud90.Wukong.csproj') -c Release "-p:WukongRefs=$refs"
+    if ($LASTEXITCODE -ne 0) { throw 'Wukong mod build failed' }
+    $resources['Cloud90.Wukong.dll'] = Join-Path $root 'mod/wukong/bin/Release/net472/Cloud90.Wukong.dll'
     $outputName = 'Cloud90GameLink.exe'
 }
 $argsList = @('/nologo','/target:winexe','/platform:anycpu','/optimize+',('/out:'+(Join-Path $root ('dist\' + $outputName))),('/win32icon:'+(Join-Path $root 'assets\cloud90.ico')),('/win32manifest:'+(Join-Path $root 'app.manifest')),'/r:System.Web.Extensions.dll','/r:System.Windows.Forms.dll','/r:System.Drawing.dll','/r:System.Security.dll','/r:System.Core.dll','/r:System.IO.Compression.dll','/r:System.IO.Compression.FileSystem.dll')

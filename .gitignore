@@ -1,4 +1,8 @@
 dist/
+mod/wukong/bin/
+mod/wukong/obj/
+mod/blasphemous/bin/
+mod/blasphemous/obj/
 mod/celeste/bin/
 mod/celeste/obj/
 node_modules/

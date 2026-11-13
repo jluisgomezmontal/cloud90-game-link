@@ -24,6 +24,8 @@ namespace Cloud90.GameLink
         public string GtaSaDir = "";
         public string Rdr2Dir = "";
         public string CelesteDir = "";
+        public string BlasphemousDir = "";
+        public string WukongDir = "";
         public string SmwDir = "";
         public string Pcsx2Dir = "";
         public string SelectedGame = "mslugx";
@@ -72,6 +74,8 @@ namespace Cloud90.GameLink
                 else if (key == "ctr_dir") s.CtrDir = value;
                 else if (key == "cuphead_dir") s.CupheadDir = value;
                 else if (key == "smw_dir") s.SmwDir = value;
+                else if (key == "wukong_dir") s.WukongDir = value;
+                else if (key == "blasphemous_dir") s.BlasphemousDir = value;
                 else if (key == "celeste_dir") s.CelesteDir = value;
                 else if (key == "rdr2_dir") s.Rdr2Dir = value;
                 else if (key == "gtasa_dir") s.GtaSaDir = value;
@@ -115,6 +119,8 @@ namespace Cloud90.GameLink
             if (CtrDir.Length > 0) lines.Add("ctr_dir=" + CtrDir);
             if (CupheadDir.Length > 0) lines.Add("cuphead_dir=" + CupheadDir);
             if (SmwDir.Length > 0) lines.Add("smw_dir=" + SmwDir);
+            if (WukongDir.Length > 0) lines.Add("wukong_dir=" + WukongDir);
+            if (BlasphemousDir.Length > 0) lines.Add("blasphemous_dir=" + BlasphemousDir);
             if (CelesteDir.Length > 0) lines.Add("celeste_dir=" + CelesteDir);
             if (Rdr2Dir.Length > 0) lines.Add("rdr2_dir=" + Rdr2Dir);
             if (GtaSaDir.Length > 0) lines.Add("gtasa_dir=" + GtaSaDir);

@@ -442,6 +442,16 @@ namespace Cloud90.GameLink
                 Array.Resize(ref panels, panels.Length + 1);
                 panels[panels.Length - 1] = new GamePanel(this, new CelesteHost());
             }
+            if (BlasphemousHost.Packaged)
+            {
+                Array.Resize(ref panels, panels.Length + 1);
+                panels[panels.Length - 1] = new GamePanel(this, new BlasphemousHost());
+            }
+            if (WukongHost.Packaged)
+            {
+                Array.Resize(ref panels, panels.Length + 1);
+                panels[panels.Length - 1] = new GamePanel(this, new WukongHost());
+            }
             navigation = new GameNavigationButton[panels.Length];
             for (int i = 0; i < panels.Length; i++)
             {
