@@ -10,7 +10,7 @@ namespace Cloud90.GameLink
         protected override string Plugin { get { return Package; } }
         protected override string SteamAppId { get { return "1174180"; } }
         protected override string ProcessName { get { return "RDR2"; } }
-        protected override string BridgeVersion { get { return "cloud90-rdr2-1"; } }
+        protected override string BridgeVersion { get { return "cloud90-rdr2-2"; } }
         public override string Id { get { return "rdr2"; } }
         public override string Title { get { return "Red Dead Redemption 2"; } }
         public override string FolderButton { get { return "Carpeta de RDR2…"; } }

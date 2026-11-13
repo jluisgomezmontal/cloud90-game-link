@@ -71,6 +71,15 @@ Con los mismos dos archivos de activación, usa estos atajos en exploración lib
 | Ctrl + Shift + F3 | Lobo | `a_c_wolf` |
 | Ctrl + Shift + F4 | Oso | `a_c_bear_01` |
 | Ctrl + Shift + F5 | Vampiro de Saint Denis con daga | `cs_vampire` |
+| Ctrl + Shift + F6 | Micah Bell | `cs_micahbell` |
+| Ctrl + Shift + F7 | Cavernícola | `a_m_m_unicorpse_01`, variante 45 |
+| Ctrl + Shift + F8 | Colm O’Driscoll | `cs_colmodriscoll` |
+| Ctrl + Shift + F9 | Andrew Milton | `cs_miltonandrews` |
+| Ctrl + Shift + F10 | Ermitaño de la cueva | `cs_cavehermit` |
+| Ctrl + Shift + F11 | Puma | `a_c_cougar_01` |
+| Ctrl + Shift + F12 | Caimán, cerca de agua | `a_c_alligator_01` |
+
+Con Game Link Preview 3, una emboscada por regalo muestra el usuario del remitente sobre el enemigo visible. El nombre visible sirve de respaldo. Los espectadores silenciados u ocultos aparecen como «Alguien». En modo Historia, verifica el nombre con un regalo real y que desaparezca al morir el enemigo o cerrar la emboscada. Comprueba la apariencia del cavernícola con la variante 45 y el ataque de cada enemigo nuevo.
 
 La emboscada busca un punto con terreno cargado a 12–26 metros del jugador. Tiene un enfriamiento compartido de 60 segundos desde que acepta cargar el modelo y dura hasta 45 segundos. Intenta retirar al NPC propio si muere, cambia el personaje, se pierde el contexto o termina el tiempo. Si el juego pausa el hilo del plugin, la limpieza se procesa cuando vuelve a ejecutarse.
 
