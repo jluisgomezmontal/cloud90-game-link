@@ -65,8 +65,8 @@ Placement checks ground height, water, line of sight to buildings/objects and
 empty collision spheres. Pursuers additionally require a nearby car path node;
 obstacles are placed ahead of the player, farther ahead at higher driving speeds.
 No spawn runs clear-area commands. The creation opcodes' own entity placement is
-preceded by those checks. Maximum simultaneous ownership is eight entities:
-up to four NPCs including a pursuer's driver, one pursuer car and three objects.
+preceded by those checks. Enemy and pursuer activations can overlap while the
+game has room. Road obstacles still allow one group of three objects at a time.
 
 Every owned entity has a generation-checked pool handle, model ID and deadline.
 Cleanup removes NPCs before cars, only touches matching owned entities, and runs

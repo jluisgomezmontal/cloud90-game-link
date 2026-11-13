@@ -60,10 +60,10 @@ static bool lineClear(Point a, Point b) {
     return reinterpret_cast<bool (__cdecl *)(const Point&,const Point&,bool,bool,bool,bool,bool,bool,bool)>(0x56A490)(a,b,true,false,false,true,true,false,false);
 }
 enum class OwnedKind { Ped, Car, Object };
-struct OwnedSpawn { OwnedKind kind; int handle; int model; ULONGLONG until; bool driver = false; };
-struct PendingSpawn { bool active = false; std::string id, effect, arg, epoch; int duration = 0, ped = -1; ULONGLONG deadline = 0; };
+struct OwnedSpawn { OwnedKind kind; int handle; int model; ULONGLONG until; };
+struct PendingSpawn { std::string id, effect, arg, epoch; int duration = 0, ped = -1; ULONGLONG deadline = 0; };
 static std::vector<OwnedSpawn> ownedSpawns;
-static PendingSpawn pendingSpawn;
+static std::vector<PendingSpawn> pendingSpawns;
 static unsigned lastWorldTime = 0;
 static void (__cdecl *originalWorldReset)();
 static bool spawnEffect(const std::string& name) { return name == "spawn_enemies" || name == "spawn_pursuer" || name == "spawn_obstacles"; }
@@ -83,8 +83,8 @@ static void removeSpawn(const OwnedSpawn& spawn) {
     scm(spawn.kind == OwnedKind::Ped ? 0x009B : spawn.kind == OwnedKind::Car ? 0x00A6 : 0x0108, spawn.handle);
 }
 static void cancelPending(const std::string& reason) {
-    if (!pendingSpawn.active) return;
-    spawnAck(pendingSpawn.id, reason); pendingSpawn.active = false;
+    for (const auto& spawn : pendingSpawns) spawnAck(spawn.id, reason);
+    pendingSpawns.clear();
 }
 static void __cdecl worldReset() {
     // Pool generations are re-used on loading/restarting: never carry ownership
@@ -101,19 +101,14 @@ static std::vector<int> spawnModels(const std::string& effect, const std::string
     return {arg == "barriers" ? 1228 : 1238};
 }
 static int countOwned(OwnedKind kind) { int count = 0; for (const auto& spawn : ownedSpawns) if (spawn.kind == kind && ownedEntity(spawn)) ++count; return count; }
-static int countFootEnemies() { int count = 0; for (const auto& spawn : ownedSpawns) if (spawn.kind == OwnedKind::Ped && !spawn.driver && ownedEntity(spawn)) ++count; return count; }
 static std::string queueSpawn(const std::string& effect, const json& command) {
     if (!exteriorFreeRoam()) return "apariciones solo en exteriores fuera de misiones, a pie o conduciendo un automovil";
-    if (pendingSpawn.active) return "ya se esta preparando una aparicion";
     std::string arg = command.value("arg", "");
     if (effect == "spawn_enemies" && !arg.empty() && arg != "1" && arg != "2" && arg != "3") return "cantidad invalida";
     if (effect == "spawn_obstacles" && !arg.empty() && arg != "cones" && arg != "barriers") return "obstaculo invalido";
     if (effect == "spawn_pursuer" && !arg.empty()) return "opcion invalida";
-    int amount = effect == "spawn_enemies" ? (arg.empty() ? 2 : arg[0]-'0') : 3;
-    if (effect == "spawn_enemies" && (countFootEnemies() + amount > 3 || countOwned(OwnedKind::Ped) + amount > 4)) return "limite de enemigos activos";
-    if (effect == "spawn_pursuer" && (countOwned(OwnedKind::Car) >= 1 || countOwned(OwnedKind::Ped) >= 4)) return "ya hay un perseguidor o demasiados enemigos";
-    if (effect == "spawn_obstacles" && countOwned(OwnedKind::Object) > 0) return "ya hay obstaculos activos";
-    if (ownedSpawns.size() + (effect == "spawn_pursuer" ? 2 : amount) > 8) return "limite de apariciones activas";
+    if (effect == "spawn_obstacles" && (countOwned(OwnedKind::Object) > 0 || std::any_of(pendingSpawns.begin(), pendingSpawns.end(),
+        [](const PendingSpawn& spawn) { return spawn.effect == "spawn_obstacles"; }))) return "ya hay obstaculos activos";
     int milliseconds = command.value("ms", 0);
     int maximum = effect == "spawn_pursuer" ? 60000 : effect == "spawn_enemies" ? 45000 : 30000;
     if (milliseconds < 1000 || milliseconds > maximum) return "duracion invalida";
@@ -123,7 +118,7 @@ static std::string queueSpawn(const std::string& effect, const json& command) {
         if (last != lastEffect.end() && now - last->second < 30000) return "en enfriamiento";
         lastEffect[effect] = now;
     }
-    pendingSpawn = {true,command.value("id", ""),effect,arg,epoch,milliseconds,pedRef(player()),std::min(now + 5000,command["expiresMs"].get<ULONGLONG>())};
+    pendingSpawns.push_back({command.value("id", ""),effect,arg,epoch,milliseconds,pedRef(player()),std::min(now + 5000,command["expiresMs"].get<ULONGLONG>())});
     for (int model : spawnModels(effect, arg)) reinterpret_cast<void (__cdecl *)(int,int)>(0x4087E0)(model, 0);
     return "pending";
 }
@@ -133,8 +128,7 @@ static bool validSpawnPoint(Point target, Point origin, float radius) {
     Point eye = origin; eye.z += 1;
     return emptySphere(target,radius) && lineClear(eye,target);
 }
-static std::string createPending() {
-    const auto task = pendingSpawn;
+static std::string createPending(const PendingSpawn& task) {
     void* ped = player(); void* car = currentVehicle();
     void* anchor = car ? car : ped; Point origin = position(anchor), direction = forward(anchor);
     if (!std::isfinite(origin.x) || !std::isfinite(origin.y) || !std::isfinite(origin.z)) return "posicion no disponible";
@@ -192,7 +186,7 @@ static std::string createPending() {
         if (handle < 0 || !ownedEntity(entry)) return "no se pudo crear el perseguidor";
         ownedSpawns.push_back(entry); scm(0x0175,handle,heading);
         int driver = scm(0x0129,handle,7,102,ScriptOutput{0}).values[0];
-        OwnedSpawn person{OwnedKind::Ped,driver,102,until,true};
+        OwnedSpawn person{OwnedKind::Ped,driver,102,until};
         if (driver < 0 || !ownedEntity(person)) { rollback(); return "no se pudo crear el conductor"; }
         ownedSpawns.push_back(person);
         scm(0x077A,driver,4,0); scm(0x00AD,handle,20.0f); scm(0x00AE,handle,2); scm(0x00AF,handle,2);
@@ -225,12 +219,27 @@ static void updateSpawns() {
             } else ++it;
         }
     }
-    if (!pendingSpawn.active) return;
-    if (!enabled || pendingSpawn.epoch != epoch || pedRef(player()) != pendingSpawn.ped) { cancelPending("aparicion cancelada por pausa o cambio de partida"); return; }
-    if (GetTickCount64() >= pendingSpawn.deadline) { cancelPending("los modelos no cargaron a tiempo"); return; }
-    for (int model : spawnModels(pendingSpawn.effect,pendingSpawn.arg)) {
-        if (!scm(0x0248,model).condition) { reinterpret_cast<void (__cdecl *)(int,int)>(0x4087E0)(model,0); return; }
+    if (!enabled) {
+        cancelPending("aparicion cancelada por pausa o cambio de partida");
+        return;
     }
-    std::string result = createPending();
-    spawnAck(pendingSpawn.id,result); pendingSpawn.active = false;
+    for (auto it = pendingSpawns.begin(); it != pendingSpawns.end();) {
+        const char* failure = nullptr;
+        if (it->epoch != epoch || pedRef(player()) != it->ped) failure = "aparicion cancelada por cambio de partida";
+        else if (GetTickCount64() >= it->deadline) failure = "los modelos no cargaron a tiempo";
+        if (failure) {
+            spawnAck(it->id, failure);
+        } else {
+            bool ready = true;
+            for (int model : spawnModels(it->effect, it->arg)) {
+                if (!scm(0x0248, model).condition) {
+                    reinterpret_cast<void (__cdecl *)(int,int)>(0x4087E0)(model, 0);
+                    ready = false;
+                }
+            }
+            if (!ready) { ++it; continue; }
+            spawnAck(it->id, createPending(*it));
+        }
+        it = pendingSpawns.erase(it);
+    }
 }

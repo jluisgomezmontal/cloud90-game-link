@@ -22,11 +22,12 @@ public sealed class Cloud90Module : EverestModule {
     private Level? lastLevel;
     private Player? lastPlayer;
     private int generation;
-    private long pollAt, shieldUntil, windUntil, mirrorUntil, shortUntil, dashLockUntil, chaserUntil, springUntil;
+    private long pollAt, shieldUntil, windUntil, mirrorUntil, shortUntil, dashLockUntil, springUntil;
     private int windDirection;
     private bool shortUsed, shortenedCurrentDash;
     private bool localPaused, pausePressed, pauseAwaitingSync;
-    private Entity? chaser, spring;
+    private Entity? spring;
+    private readonly List<(Entity Entity, long Until)> chasers = new();
 
     public override void Load() {
         string root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Cloud90GameLink", "celeste");
@@ -258,10 +259,9 @@ public sealed class Cloud90Module : EverestModule {
                 if (player.Die(Vector2.Zero) == null) return "el juego no permitió reiniciar";
                 break;
             case "spawn_chaser":
-                if (chaser != null) return "ya hay un perseguidor";
-                chaser = SpawnChaser(level, player, arg);
+                var chaser = SpawnChaser(level, player, arg);
                 if (chaser == null) return "enemigo o posición incompatible";
-                chaserUntil = Duration(12000);
+                chasers.Add((chaser, Duration(12000)));
                 pendingEntities.Add((id, level, chaser));
                 break;
             case "rescue_spring":
@@ -311,15 +311,19 @@ public sealed class Cloud90Module : EverestModule {
     }
 
     private void ExpireEffects(long now) {
-        if (now >= chaserUntil) Remove(ref chaser);
+        for (int i = chasers.Count - 1; i >= 0; i--) {
+            if (now < chasers[i].Until) continue;
+            Entity? entity = chasers[i].Entity;
+            Remove(ref entity);
+            chasers.RemoveAt(i);
+        }
         if (now >= springUntil) Remove(ref spring);
     }
 
     private void ClearEffects() {
         shieldUntil = windUntil = mirrorUntil = shortUntil = dashLockUntil = 0;
         shortUsed = shortenedCurrentDash = false;
-        Remove(ref chaser);
-        Remove(ref spring);
+        ExpireEffects(long.MaxValue);
     }
 
     private void Remove(ref Entity? entity) {

@@ -123,13 +123,13 @@ static void tick() {
     }
     json status = {{"session", session}, {"bridgeVersion", "cloud90-gtasa-3"}, {"pid", GetCurrentProcessId()}, {"heartbeatMs", now}, {"epoch", epoch}, {"inPlay", playing}, {"paused", localPaused}, {"capabilities", capabilities}, {"acks", acks}, {"reason", playing ? "CJ listo" : "menu, pausa o partida no disponible"}};
     status["activeEffects"] = json::array(); for (const auto& effect : activeEffects) status["activeEffects"].push_back(effect.first);
-    status["spawnedEntities"] = ownedSpawns.size(); status["preparingSpawn"] = pendingSpawn.active;
+    status["spawnedEntities"] = ownedSpawns.size(); status["preparingSpawn"] = !pendingSpawns.empty();
     if (playing) status["telemetry"] = {{"health", field<float>(ped, 0x540)}, {"armour", field<float>(ped, 0x548)}, {"money", field<int>(info, 0xB8)}};
     writeStatus(status);
 }
 static void __cdecl process() {
     // Remove our actors before AI/physics gets another step after a panic.
-    try { if ((!effectsAllowed() || sceneCleanupRequested) && (pendingSpawn.active || !ownedSpawns.empty())) updateSpawns(); }
+    try { if ((!effectsAllowed() || sceneCleanupRequested) && (!pendingSpawns.empty() || !ownedSpawns.empty())) updateSpawns(); }
     catch (...) { remotePaused = true; }
     originalProcess();
     try { tick(); clearExpiredEffects(); } catch (...) { remotePaused = true; activeEffects.clear(); restoreFog(); }
