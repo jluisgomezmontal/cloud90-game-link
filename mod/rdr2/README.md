@@ -81,7 +81,7 @@ Con los mismos dos archivos de activación, usa estos atajos en exploración lib
 
 Con Game Link Preview 3, una emboscada por regalo muestra el usuario del remitente sobre el enemigo visible. El nombre visible sirve de respaldo. Los espectadores silenciados u ocultos aparecen como «Alguien». En modo Historia, verifica el nombre con un regalo real y que desaparezca al morir el enemigo o cerrar la emboscada. Comprueba la apariencia del cavernícola con la variante 45 y el ataque de cada enemigo nuevo.
 
-La emboscada busca un punto con terreno cargado a 12–26 metros del jugador. Tiene un enfriamiento compartido de 60 segundos desde que acepta cargar el modelo y dura hasta 45 segundos. Intenta retirar al NPC propio si muere, cambia el personaje, se pierde el contexto o termina el tiempo. Si el juego pausa el hilo del plugin, la limpieza se procesa cuando vuelve a ejecutarse.
+La emboscada busca suelo compatible cerca del jugador. Admite un enemigo vivo a la vez y puedes invocar otro al derrotarlo, sin temporizador de enfriamiento propio. El enemigo permanece durante el combate. Game Link lo retira al pausar los efectos, entrar en una misión, perder la conexión de forma sostenida o cambiar de personaje. Una interrupción breve de la cámara o del control permite continuar la emboscada.
 
 Revisa las entradas `effect=bandit_ambush` del registro. `spawned` confirma la creación del NPC. `combat_confirmed` confirma que el juego detectó combate con el jugador. Prueba cada modelo en terreno abierto, revisa que el vampiro use la daga y verifica la limpieza al pausar, morir o entrar en una misión. El efecto reutiliza el modelo del vampiro y le asigna combate local.
 

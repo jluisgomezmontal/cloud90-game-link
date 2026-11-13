@@ -11,7 +11,7 @@ public sealed class Cloud90Module : EverestModule {
     private static readonly Dictionary<string, int> Cooldowns = new() {
         ["dash_refill"] = 10, ["stamina_refill"] = 10, ["shield"] = 20,
         ["dash_remove"] = 30, ["wind"] = 45, ["short_dash"] = 45,
-        ["mirror_controls"] = 60, ["retry_room"] = 120, ["spawn_chaser"] = 90, ["rescue_spring"] = 60
+        ["mirror_controls"] = 60, ["retry_room"] = 120, ["spawn_chaser"] = 0, ["rescue_spring"] = 60
     };
     private readonly Dictionary<string, long> cooldowns = new();
     private readonly HashSet<string> seen = new();
@@ -272,7 +272,7 @@ public sealed class Cloud90Module : EverestModule {
                 pendingEntities.Add((id, level, spring));
                 break;
         }
-        cooldowns[effect] = now + Cooldowns[effect] * 1000L;
+        if (Cooldowns[effect] > 0) cooldowns[effect] = now + Cooldowns[effect] * 1000L;
         return effect is "spawn_chaser" or "rescue_spring" ? null : "ok";
     }
 
