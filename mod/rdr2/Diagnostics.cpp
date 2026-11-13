@@ -394,7 +394,7 @@ struct Ambush {
     int enemy = 0;
     ULONGLONG deadline = 0;
     ULONGLONG combatCheckAt = 0;
-    ULONGLONG availableAt = 0;
+    ULONGLONG unavailableSince = 0;
     bool cleanup = false;
     bool reportedCombat = false;
     std::string viewer;
@@ -403,8 +403,7 @@ struct Ambush {
                       const std::string& sender = {}) {
         if (sample.context != FreeRoam) return "out_of_context";
         if (shielded) return "shielded";
-        if (option) return "ambush_active";
-        if (now < availableAt) return "cooldown";
+        if (option) return "ya hay un enemigo de emboscada activo";
         if (!ReadNative(IsModelValid, selected.model) || !ReadNative(IsModelAPed, selected.model)) {
             return "model_unavailable";
         }
@@ -413,7 +412,7 @@ struct Ambush {
         cleanup = false;
         target = sample.ped;
         deadline = now + 3000;
-        availableAt = now + 60000;
+        unavailableSince = 0;
         CallNative(RequestModel, option->model, 0);
         return "loading_model";
     }
@@ -424,7 +423,7 @@ struct Ambush {
             ReadNative(BelongsToScript, enemy, 0);
     }
 
-    void DrawViewer(const Sample& sample, ULONGLONG now) const {
+    void DrawViewer(const Sample& sample) const {
         constexpr UINT64 GetHeadCoords = 0x17C07FC640E86B4E;
         constexpr UINT64 ProjectToScreen = 0xCB50D7AFCC8B0EC6;
         constexpr UINT64 ClearLineOfSight = 0xFCDFF7B72D23A1AC;
@@ -435,7 +434,7 @@ struct Ambush {
         constexpr UINT64 TextCenter = 0xBE5261939FBECB8C;
         constexpr UINT64 DrawText = 0x16794E044C9EFB58;
         constexpr int HeadBone = 21030;
-        if (!option || !enemy || viewer.empty() || cleanup || now >= deadline ||
+        if (!option || !enemy || viewer.empty() || cleanup ||
             sample.context != FreeRoam || sample.ped != target || !OwnsEnemy() ||
             ReadNative(IsEntityDead, enemy) || !ReadNative(IsOnScreen, enemy) ||
             !ReadNative(ClearLineOfSight, target, enemy, 17)) return;
@@ -472,8 +471,14 @@ struct Ambush {
                 enemy = 0;
                 return "entity_no_longer_owned";
             }
-            if (cleanup || sample.context != FreeRoam || sample.ped != target ||
-                now >= deadline || ReadNative(IsEntityDead, enemy)) {
+            // Camera changes and brief loss of control should not despawn a live enemy.
+            const bool unavailable = sample.context != FreeRoam && sample.context != "pause_menu";
+            if (!unavailable) unavailableSince = 0;
+            else if (!unavailableSince) unavailableSince = now;
+            if (cleanup || (sample.ped && sample.ped != target) || sample.context == "dead" ||
+                sample.context == "story_mission" || !ReadNative(DoesEntityExist, target) ||
+                ReadNative(IsEntityDead, target) || ReadNative(IsEntityDead, enemy) ||
+                (unavailableSince && now - unavailableSince >= 15000)) {
                 cleanup = true;
                 int handle = enemy;
                 CallNative(DeletePed, &handle);
@@ -525,7 +530,6 @@ struct Ambush {
                        GameHash("add_reason_default"), 1, 0.0f, 0);
         }
         CallNative(TaskCombatPed, enemy, target, 0, 16);
-        deadline = now + 45000;
         combatCheckAt = now + 3000;
         reportedCombat = false;
         return "spawned";
@@ -580,7 +584,7 @@ class LiveBridge {
     unsigned generation = 0;
     int lastPed = 0;
     ULONGLONG nextPoll = 0, shieldUntil = 0;
-    ULONGLONG ambushExpires = 0;
+    ULONGLONG ambushExpires = 0, inboxMissingSince = 0;
     std::array<ULONGLONG, PreviewEffects.size()> availableAt{};
     Ambush ambush;
 
@@ -670,7 +674,7 @@ public:
 
     bool Active() const { return !session.empty(); }
 
-    void DrawViewer(const Sample& sample, ULONGLONG now) const { ambush.DrawViewer(sample, now); }
+    void DrawViewer(const Sample& sample) const { ambush.DrawViewer(sample); }
 
     void Tick(const Sample& sample, ULONGLONG now) {
         const bool playing = sample.context == FreeRoam;
@@ -678,7 +682,7 @@ public:
         if (ped != lastPed || epoch.empty()) {
             epoch = session + "_" + std::to_string(++generation);
             shieldUntil = 0;
-            if (ambush.option) ambush.cleanup = true;
+            if (ambush.option && !ambush.enemy) ambush.cleanup = true;
             lastPed = ped;
         }
         if (now < nextPoll) return;
@@ -695,12 +699,15 @@ public:
             fresh = false;
             paused = true;
         }
+        if (fresh) inboxMissingSince = 0;
+        else if (!inboxMissingSince) inboxMissingSince = now;
         if (paused) {
             shieldUntil = 0;
-            if (ambush.option) ambush.cleanup = true;
+            if (ambush.option && (!ambush.enemy || fresh || now - inboxMissingSince >= 15000))
+                ambush.cleanup = true;
         }
         if (ambush.option && !ambushId.empty() && now >= ambushExpires) {
-            ambush.cleanup = true;
+            if (!ambush.enemy) ambush.cleanup = true;
             Ack(ambushId, ambush.enemy ? "resultado incierto; combate sin confirmar" : "caducado");
             ambushId.clear();
         }
@@ -860,7 +867,7 @@ void ScriptMain() {
         }
         if (live.Active()) {
             live.Tick(sample, now);
-            live.DrawViewer(sample, now);
+            live.DrawViewer(sample);
         }
         scriptWait(preview || live.Active() ? 0 : 500);
     }
