@@ -47,8 +47,8 @@ this local build alone does not enable GTA on the production website.
 | `freeze_feet` | Block walking and jumping on foot, up to 3 s, shooting/aiming retained |
 | `dense_fog` | Temporary rendering fog, up to 15 s; no forced-weather/save changes |
 | `camera_shake` | Temporary camera shake, up to 6 s |
-| `spawn_enemies` | 1–3 armed Ballas (default 2), up to 45 s; native minimum wait 45 s |
-| `spawn_pursuer` | One Sultan with a hostile driver on a nearby road, up to 60 s; native minimum wait 45 s |
+| `spawn_enemies` | 1–3 armed Ballas (default 2), up to 45 s |
+| `spawn_pursuer` | One Sultan with a hostile driver on a nearby road, up to 60 s |
 | `spawn_obstacles` | Three traffic cones or roadwork barriers, up to 30 s; native minimum wait 30 s |
 
 ## Bridge 3 appearances

@@ -118,12 +118,13 @@ static std::string queueSpawn(const std::string& effect, const json& command) {
     int maximum = effect == "spawn_pursuer" ? 60000 : effect == "spawn_enemies" ? 45000 : 30000;
     if (milliseconds < 1000 || milliseconds > maximum) return "duracion invalida";
     ULONGLONG now = GetTickCount64();
-    auto last = lastEffect.find(effect);
-    ULONGLONG cooldown = effect == "spawn_obstacles" ? 30000 : 45000;
-    if (last != lastEffect.end() && now - last->second < cooldown) return "en enfriamiento";
+    if (effect == "spawn_obstacles") {
+        auto last = lastEffect.find(effect);
+        if (last != lastEffect.end() && now - last->second < 30000) return "en enfriamiento";
+        lastEffect[effect] = now;
+    }
     pendingSpawn = {true,command.value("id", ""),effect,arg,epoch,milliseconds,pedRef(player()),std::min(now + 5000,command["expiresMs"].get<ULONGLONG>())};
     for (int model : spawnModels(effect, arg)) reinterpret_cast<void (__cdecl *)(int,int)>(0x4087E0)(model, 0);
-    lastEffect[effect] = now;
     return "pending";
 }
 static bool validSpawnPoint(Point target, Point origin, float radius) {
