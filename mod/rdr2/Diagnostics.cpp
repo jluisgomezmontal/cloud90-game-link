@@ -324,35 +324,68 @@ std::string ViewerLabel(const std::string& name) {
     return label.substr(first, label.find_last_not_of(' ') - first + 1);
 }
 
-bool FindEnemyPosition(int target, NativeVector& position, bool nearWater) {
+const char* FindEnemyPosition(int target, NativeVector& position, bool nearWater) {
     constexpr UINT64 ProbeWater = 0x2B3451FA1E3142E2;
-    if (ReadNative(IsEntityInWater, target)) return false;
+    constexpr UINT64 GroundHeight = 0x24FA4267BB8D2431;
+    if (ReadNative(IsEntityInWater, target)) return "sal del agua para iniciar la emboscada";
     const auto origin = ReadVector(GetEntityCoords, target, 1, 0);
-    constexpr std::array<NativeVector, 4> offsets{{{0, -18, 0}, {-18, 0, 0}, {18, 0, 0}, {0, 18, 0}}};
-    for (const auto& offset : offsets) {
-        const auto probe = ReadVector(GetOffsetCoords, target, offset.x, offset.y, offset.z);
-        NativeVector candidate{};
-        if (!ReadNative(GetSafeCoord, probe.x, probe.y, probe.z, 1, &candidate, 0)) continue;
-        const float distance = std::hypot(candidate.x - origin.x, candidate.y - origin.y);
-        if (distance >= 12 && distance <= 26 && std::abs(candidate.z - origin.z) <= 4 &&
-            ReadNative(HasPositionCollision, candidate.x, candidate.y, candidate.z)) {
-            if (nearWater) {
-                float surface = 0;
-                bool shore = false;
-                for (const auto& direction : offsets) {
-                    if (ReadNative(ProbeWater, candidate.x + direction.x / 3, candidate.y + direction.y / 3,
-                                   candidate.z + 2.0f, 0, &surface) && std::abs(surface - candidate.z) < 2.0f) {
-                        shore = true;
-                        break;
-                    }
-                }
-                if (!shore) continue;
+    if (!std::isfinite(origin.x) || !std::isfinite(origin.y) || !std::isfinite(origin.z))
+        return "no se pudo leer la posición del jugador";
+    constexpr std::array<NativeVector, 8> directions{{
+        {0,-1,0},{-1,0,0},{1,0,0},{0,1,0},
+        {-.707f,-.707f,0},{.707f,-.707f,0},{-.707f,.707f,0},{.707f,.707f,0}
+    }};
+    bool foundGround = false;
+    auto valid = [&](const NativeVector& point) {
+        const float distance = std::hypot(point.x - origin.x, point.y - origin.y);
+        if (!(distance >= 10 && distance <= 32 && std::abs(point.z - origin.z) <= 5)) return false;
+        float surface = 0;
+        if (ReadNative(ProbeWater, point.x, point.y, point.z + 2.0f, 0, &surface) &&
+            surface >= point.z - .1f) return false;
+        foundGround = true;
+        if (!nearWater) return true;
+        for (const auto& direction : directions) {
+            if (ReadNative(ProbeWater, point.x + direction.x * 6, point.y + direction.y * 6,
+                           point.z + 2.0f, 0, &surface) && std::abs(surface - point.z) < 2.0f)
+                return true;
+        }
+        return false;
+    };
+    for (const float radius : {18.0f, 25.0f, 12.0f}) {
+        for (const auto& direction : directions) {
+            const NativeVector probe{origin.x + direction.x * radius, origin.y + direction.y * radius, origin.z};
+            NativeVector candidate{};
+            if (ReadNative(GetSafeCoord, probe.x, probe.y, probe.z, 1, &candidate, 0) && valid(candidate)) {
+                position = candidate;
+                return nullptr;
             }
-            position = candidate;
-            return true;
         }
     }
-    return false;
+    // Open terrain can return no navigable point. Sample actual collision surfaces
+    // and reject abrupt changes in elevation before trying a spawn there.
+    for (const float radius : {18.0f, 25.0f, 12.0f}) {
+        for (const auto& direction : directions) {
+            NativeVector point{origin.x + direction.x * radius, origin.y + direction.y * radius, 0};
+            const float probeHeight = origin.z + 8.0f;
+            if (!ReadNative(GroundHeight, point.x, point.y, probeHeight, &point.z, 0)) continue;
+            bool stable = true;
+            for (size_t i = 0; i < 4; ++i) {
+                float edge = 0;
+                if (!ReadNative(GroundHeight, point.x + directions[i].x, point.y + directions[i].y,
+                                probeHeight, &edge, 0) || !(std::abs(edge - point.z) <= .65f)) {
+                    stable = false;
+                    break;
+                }
+            }
+            if (stable && valid(point)) {
+                point.z += .15f;
+                position = point;
+                return nullptr;
+            }
+        }
+    }
+    return foundGround && nearWater ? "el caimán requiere una orilla cercana" :
+        "sin suelo seco y estable cerca del jugador";
 }
 
 struct Ambush {
@@ -467,9 +500,8 @@ struct Ambush {
 
         if (!failure) {
             NativeVector position{};
-            if (!FindEnemyPosition(target, position, option->model == GameHash("a_c_alligator_01")))
-                failure = "no_safe_position";
-            else {
+            failure = FindEnemyPosition(target, position, option->model == GameHash("a_c_alligator_01"));
+            if (!failure) {
                 enemy = ReadNative(CreatePed, option->model, position.x, position.y, position.z, 0.0f, 0, 1, 0, 0);
                 if (!enemy || !ReadNative(DoesEntityExist, enemy)) failure = "spawn_failed";
             }
