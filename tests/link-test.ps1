@@ -27,7 +27,8 @@ try {
     }
     & $csc /nologo /target:library "/out:$dll" /r:System.Web.Extensions.dll /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Security.dll /r:System.Core.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll @jsonRefs @sources
     if ($LASTEXITCODE -ne 0) { throw 'csc failed' }
-    [Reflection.Assembly]::LoadFrom($dll) | Out-Null
+    $testAssembly = [Reflection.Assembly]::LoadFrom($dll)
+    $clientVersion = $testAssembly.GetType('Cloud90.GameLink.Link', $true).GetField('Version').GetRawConstantValue()
     if ($JsonDll) {
         [Reflection.Assembly]::LoadFrom((Join-Path $work 'Newtonsoft.Json.dll')) | Out-Null
         $failed += [BridgeJsonTests]::Run()
@@ -80,8 +81,9 @@ try {
             $got = Get-Content -LiteralPath $log -Encoding UTF8
             $got | ForEach-Object { "  server: $_" }
             $helloGame = if ($mode -eq 'celeste') { 'celeste' } elseif ($mode -eq 'ctr') { 'ctrnf' } elseif ($mode -eq 'cuphead') { 'cuphead' } elseif ($mode -eq 'smw') { 'smw' } elseif ($mode -eq 'mvsc') { 'mvsc' } elseif ($mode -eq 'mslugx') { 'mslugx' } elseif ($mode -eq 'gow2') { 'gow2' } else { 'kof2002' }
-            $helloVersion = if ($mode -eq 'celeste') { 'cloud90-game-link-celeste-1' } else { 'cloud90-game-link-1.8.0-dev' }
-            if (-not ($got -match ('"type":"hello","game":"' + $helloGame + '","version":"' + $helloVersion + '"'))) { "FAIL: no hello"; $failed++ }
+            $helloVersion = if ($mode -eq 'celeste') { 'cloud90-game-link-celeste-1' } else { $clientVersion }
+            $hello = '"type":"hello","game":"' + $helloGame + '","version":"' + $helloVersion + '"'
+            if (-not ($got -cmatch [regex]::Escape($hello))) { "FAIL: expected hello for $helloGame with version $helloVersion"; $failed++ }
             if ($mode -eq 'ctr' -and -not ($got -match '"type":"ack","id":"e-42","ok":true')) { "FAIL: no CTR ack"; $failed++ }
             if ($mode -eq 'cuphead' -and -not ($got -match '"type":"ack","id":"e-42","ok":true')) { "FAIL: no Cuphead ack"; $failed++ }
             if ($mode -eq 'gow2' -and -not ($got -match '"type":"ack","id":"e-42","ok":true')) { "FAIL: no GoW II ack"; $failed++ }
