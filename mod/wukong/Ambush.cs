@@ -49,6 +49,7 @@ namespace Cloud90.Wukong {
         }
 
         private AmbushProfile ambushProfile;
+        private readonly Random ambushRandom = new Random();
         private readonly List<AmbushEnemy> ambushes = new List<AmbushEnemy>();
         private ulong bossReadyAt;
         private bool captureAmbushDiagnostics;
@@ -141,7 +142,13 @@ namespace Cloud90.Wukong {
             var zone = ActiveZone();
             if (zone == null) return "emboscada fuera de una zona habilitada";
             var choice = Text(command, "arg");
-            if (!(boss ? Bosses : NormalEnemies).Contains(choice) ||
+            var allowed = boss ? Bosses : NormalEnemies;
+            if (!boss && choice == "surprise") {
+                var choices = zone.Enemies.Keys.Where(allowed.Contains).ToArray();
+                if (choices.Length == 0) return "no hay enemigos normales habilitados en esta zona";
+                choice = choices[ambushRandom.Next(choices.Length)];
+            }
+            if (!allowed.Contains(choice) ||
                 !zone.Enemies.TryGetValue(choice, out string path)) return "enemigo no habilitado en esta zona";
             UClass enemyClass = UObject.LoadClass<BUTamerActor>(default, path);
             if (enemyClass == null) return "clase de enemigo no disponible";

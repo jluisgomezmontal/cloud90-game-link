@@ -18,6 +18,8 @@ Sorbos, enfriamiento de un hechizo específico y energía de transformación req
 
 El plugin admite varias invocaciones normales simultáneas y una emboscada de jefe, con 180 s de espera entre jefes. El catálogo se habilita por capacidad mientras el jugador esté en una zona de prueba. Cada orden espera que la criatura tenga al Destinado como objetivo antes de anunciarse.
 
+La opción **Sorpresa** elige un enemigo normal del perfil de la zona activa en cada invocación.
+
 Para probarla, coloca `ambush-profile.json` en `%LOCALAPPDATA%\Cloud90GameLink\wukong`. El perfil requiere el SHA-256 del ejecutable en uso y zonas verificadas. Las coordenadas usan unidades de Unreal. Cada ruta tiene que apuntar a una clase Blueprint de `BUTamerActor` en ese build.
 
 ```json

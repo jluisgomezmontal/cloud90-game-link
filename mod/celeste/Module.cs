@@ -7,7 +7,8 @@ using System.Text.Json;
 namespace Celeste.Mod.Cloud90;
 
 public sealed class Cloud90Module : EverestModule {
-    private const string BridgeVersion = "cloud90-celeste-1";
+    private const string BridgeVersion = "cloud90-celeste-2";
+    private static readonly Random SurpriseRandom = new();
     private static readonly Dictionary<string, int> Cooldowns = new() {
         ["dash_refill"] = 10, ["stamina_refill"] = 10, ["shield"] = 20,
         ["dash_remove"] = 30, ["wind"] = 45, ["short_dash"] = 45,
@@ -281,7 +282,9 @@ public sealed class Cloud90Module : EverestModule {
 
     private static Entity? SpawnChaser(Level level, Player player, string arg) {
         int chapter = level.Session.Area.ID;
-        if (arg == "badeline" && (chapter != 2 || level.Entities.FindFirst<BadelineOldsite>() != null)) return null;
+        bool canUseBadeline = chapter == 2 && level.Entities.FindFirst<BadelineOldsite>() == null;
+        if (arg == "surprise") arg = canUseBadeline && SurpriseRandom.Next(2) == 0 ? "badeline" : "seeker";
+        if (arg == "badeline" && !canUseBadeline) return null;
         if (arg == "seeker" && chapter != 5 && chapter != 2) return null;
         if (arg is not ("badeline" or "seeker")) return null;
         foreach (int offset in new[] { -48, 48, -32, 32 }) {
