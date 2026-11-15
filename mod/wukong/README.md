@@ -12,7 +12,35 @@ Vista previa experimental para la versión de Steam en Windows. El plugin C# se 
 
 Hay 17 efectos implementados. Incluyen vida, maná, resistencia, concentración, Qi de espíritu y artefacto, escudo, ataque base, movimiento lento, bloqueo de esquiva, invulnerabilidad y muerte directa con permiso. Bendición y debilitamiento modifican el ataque base, por lo que se debe comprobar su efecto también en habilidades que escalen con ese atributo.
 
-Sorbos, enfriamiento de un hechizo específico, energía de transformación, emboscadas y jefes requieren validar las API y clases en el build de Steam. Para habilitar emboscadas se debe confirmar IA, limpieza de actores y proyectiles, y ausencia de cambios en recompensas o progreso. La etiqueta del remitente forma parte de esa fase.
+Sorbos, enfriamiento de un hechizo específico y energía de transformación requieren validar las API en el build de Steam.
+
+## Emboscada experimental
+
+El plugin admite varias invocaciones normales simultáneas y una emboscada de jefe, con 180 s de espera entre jefes. El catálogo se habilita por capacidad mientras el jugador esté en una zona de prueba. Cada orden espera que la criatura tenga al Destinado como objetivo antes de anunciarse.
+
+Para probarla, coloca `ambush-profile.json` en `%LOCALAPPDATA%\Cloud90GameLink\wukong`. El perfil requiere el SHA-256 del ejecutable en uso y zonas verificadas. Las coordenadas usan unidades de Unreal. Cada ruta tiene que apuntar a una clase Blueprint de `BUTamerActor` en ese build.
+
+```json
+{
+  "ExecutableSha256": "<SHA-256 del ejecutable>",
+  "Zones": [
+    {
+      "Level": "<nombre interno del mapa>",
+      "X": 0,
+      "Y": 0,
+      "Z": 0,
+      "Radius": 1500,
+      "Enemies": {
+        "wolf_scout": "/Game/<ruta-verificada>.<clase>_C"
+      }
+    }
+  ]
+}
+```
+
+El ejemplo requiere los valores reales del build. Los IDs adicionales son `wolf_archer`, `crow_diviner`, `wandering_wight`, `guangzhi` y `tiger_vanguard`. Primero verifica Wolf Scout en una partida secundaria y confirma IA, etiquetas, limpieza de actores y proyectiles y ausencia de cambios en recompensas o progreso antes de habilitar más clases. Consulta el [plan de validación](../../PLAN-WUKONG.md#validación-y-publicación).
+
+Para obtener datos del build, crea `capture-ambush.txt` vacío junto al perfil antes de abrir Wukong. Carga una partida cerca del enemigo candidato. En el primer estado controlable conectado, el módulo escribe `ambush-diagnostics.json` con el hash, mapa, coordenadas, clases de invocación cercanas y sus IDs cuando están cargadas. Este diagnóstico solo lee datos del juego. Quita el archivo de activación cuando termines.
 
 ## Compilar
 
