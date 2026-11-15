@@ -85,6 +85,8 @@ Con los mismos dos archivos de activación, usa estos atajos en exploración lib
 | Ctrl + Shift + Num 5 | Jabalí | `a_c_boar_01` |
 | Ctrl + Shift + Num 6 | Coyote | `a_c_coyote_01` |
 | Ctrl + Shift + Num 7 | Toro | `a_c_bull_01` |
+| Ctrl + Shift + Num 8 | Jabalí legendario | `a_c_boarlegendary_01` |
+| Ctrl + Shift + Num 9 | Bisonte legendario Tatanka | `a_c_buffalo_tatanka_01` |
 
 El caimán usa la misma búsqueda de suelo seco que los demás enemigos. Los modelos nuevos deben probarse dentro del juego para confirmar su comportamiento en combate.
 
