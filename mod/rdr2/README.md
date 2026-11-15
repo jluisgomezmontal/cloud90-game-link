@@ -71,7 +71,7 @@ Con los mismos dos archivos de activación, usa estos atajos en exploración lib
 | Ctrl + Shift + F3 | Lobo | `a_c_wolf` |
 | Ctrl + Shift + F4 | Oso | `a_c_bear_01` |
 | Ctrl + Shift + F5 | Vampiro de Saint Denis con daga | `cs_vampire` |
-| Ctrl + Shift + F7 | Cavernícola | `a_m_m_unicorpse_01`, variante 45 |
+| Ctrl + Shift + F7 | Cavernícola | `a_m_m_unicorpse_01`, atuendo 45 (`0x2ACC5E3E`) |
 | Ctrl + Shift + F8 | Colm O’Driscoll | `cs_colmodriscoll` |
 | Ctrl + Shift + F9 | Andrew Milton | `cs_miltonandrews` |
 | Ctrl + Shift + F10 | Ermitaño de la cueva | `cs_cavehermit` |

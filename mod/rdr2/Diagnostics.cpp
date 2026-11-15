@@ -12,6 +12,7 @@
 #include <filesystem>
 #include <fstream>
 #include <list>
+#include <random>
 #include <string_view>
 #include <unordered_set>
 #include <vector>
@@ -74,6 +75,10 @@ constexpr UINT64 BelongsToScript = 0x622B1980CBE13332;
 constexpr UINT64 SetMissionEntity = 0xDC19C288082E586E;
 constexpr UINT64 EquipOutfitPreset = 0x77FF8D35EEC6BBC4;
 constexpr UINT64 UpdatePedVariation = 0xCC8CA3E88256E58F;
+constexpr UINT64 RequestOutfit = 0x13154A76CE0CF9AB;
+constexpr UINT64 IsOutfitRequestValid = 0xB25E57FC8E37114D;
+constexpr UINT64 ApplyOutfit = 0x74F512E29CB717E2;
+constexpr UINT64 ReleaseOutfit = 0x4592B8B9B0EF5F48;
 constexpr UINT64 GiveWeaponToPed = 0x5E3BDDBCB83F3D84;
 constexpr UINT64 TaskCombatPed = 0xF166E48407BAC484;
 constexpr UINT64 IsPedInCombat = 0x4859F1FC66A6278E;
@@ -281,7 +286,7 @@ struct EnemyOption {
     UINT32 model;
     UINT32 weapon;
     int key;
-    int outfit = 0;
+    UINT32 outfit = 0;
 };
 
 constexpr std::array EnemyOptions{
@@ -290,7 +295,7 @@ constexpr std::array EnemyOptions{
     EnemyOption{"wolf", GameHash("a_c_wolf"), 0, VK_F3},
     EnemyOption{"bear", GameHash("a_c_bear_01"), 0, VK_F4},
     EnemyOption{"vampire", GameHash("cs_vampire"), GameHash("weapon_melee_knife_vampire"), VK_F5},
-    EnemyOption{"caveman", GameHash("a_m_m_unicorpse_01"), GameHash("weapon_melee_ancient_hatchet"), VK_F7, 45},
+    EnemyOption{"caveman", GameHash("a_m_m_unicorpse_01"), GameHash("weapon_melee_ancient_hatchet"), VK_F7, 0x2ACC5E3E},
     EnemyOption{"colm", GameHash("cs_colmodriscoll"), GameHash("weapon_repeater_carbine"), VK_F8},
     EnemyOption{"milton", GameHash("cs_miltonandrews"), GameHash("weapon_rifle_boltaction"), VK_F9},
     EnemyOption{"cave_hermit", GameHash("cs_cavehermit"), GameHash("weapon_melee_knife"), VK_F10},
@@ -339,6 +344,11 @@ const char* FindEnemyPosition(int target, NativeVector& position, bool nearWater
         {0,-1,0},{-1,0,0},{1,0,0},{0,1,0},
         {-.707f,-.707f,0},{.707f,-.707f,0},{-.707f,.707f,0},{.707f,.707f,0}
     }};
+    static std::mt19937 random(static_cast<unsigned>(GetTickCount64()));
+    auto spawnDirections = directions;
+    std::array<float, 3> radii{18.0f, 25.0f, 12.0f};
+    std::shuffle(spawnDirections.begin(), spawnDirections.end(), random);
+    std::shuffle(radii.begin(), radii.end(), random);
     bool foundGround = false;
     bool foundFallback = false;
     NativeVector fallback{};
@@ -367,8 +377,8 @@ const char* FindEnemyPosition(int target, NativeVector& position, bool nearWater
         }
         return false;
     };
-    for (const float radius : {18.0f, 25.0f, 12.0f}) {
-        for (const auto& direction : directions) {
+    for (const float radius : radii) {
+        for (const auto& direction : spawnDirections) {
             const NativeVector probe{origin.x + direction.x * radius, origin.y + direction.y * radius, origin.z};
             NativeVector candidate{};
             if (ReadNative(GetSafeCoord, probe.x, probe.y, probe.z, 1, &candidate, 0) &&
@@ -380,8 +390,8 @@ const char* FindEnemyPosition(int target, NativeVector& position, bool nearWater
     }
     // Open terrain can return no navigable point. Sample actual collision surfaces
     // and reject abrupt changes in elevation before trying a spawn there.
-    for (const float radius : {18.0f, 25.0f, 12.0f}) {
-        for (const auto& direction : directions) {
+    for (const float radius : radii) {
+        for (const auto& direction : spawnDirections) {
             NativeVector point{origin.x + direction.x * radius, origin.y + direction.y * radius, 0};
             const float probeHeight = origin.z + 8.0f;
             if (!ReadNative(GroundHeight, point.x, point.y, probeHeight, &point.z, 0)) continue;
@@ -417,6 +427,9 @@ struct Ambush {
     ULONGLONG deadline = 0;
     ULONGLONG combatCheckAt = 0;
     ULONGLONG unavailableSince = 0;
+    ULONGLONG removeBodyAt = 0;
+    ULONGLONG outfitCheckAt = 0;
+    int outfitRequest = -1;
     bool cleanup = false;
     bool reportedCombat = false;
     std::string viewer, commandId;
@@ -428,6 +441,11 @@ struct Ambush {
         if (shielded) return "shielded";
         if (!ReadNative(IsModelValid, selected.model) || !ReadNative(IsModelAPed, selected.model)) {
             return "model_unavailable";
+        }
+        if (selected.outfit) {
+            outfitRequest = ReadNative(RequestOutfit, selected.model, selected.outfit);
+            if (outfitRequest < 0) return "no se pudo solicitar el atuendo del cavernícola";
+            outfitCheckAt = now + 200;
         }
         option = &selected;
         viewer = ViewerLabel(sender);
@@ -498,9 +516,11 @@ struct Ambush {
             const bool unavailable = sample.context != FreeRoam && sample.context != "pause_menu";
             if (!unavailable) unavailableSince = 0;
             else if (!unavailableSince) unavailableSince = now;
+            const bool dead = ReadNative(IsEntityDead, enemy) != 0;
+            if (dead && !removeBodyAt) removeBodyAt = now + 5000;
             if (cleanup || (sample.ped && sample.ped != target) || sample.context == "dead" ||
                 sample.context == "story_mission" || !ReadNative(DoesEntityExist, target) ||
-                ReadNative(IsEntityDead, target) || ReadNative(IsEntityDead, enemy) ||
+                ReadNative(IsEntityDead, target) || (removeBodyAt && now >= removeBodyAt) ||
                 (unavailableSince && now - unavailableSince >= 15000)) {
                 cleanup = true;
                 int handle = enemy;
@@ -510,6 +530,7 @@ struct Ambush {
                 enemy = 0;
                 return "entity_removed";
             }
+            if (dead) return nullptr;
             if (!reportedCombat) {
                 const bool inCombat = ReadNative(IsPedInCombat, enemy, target) != 0;
                 if (inCombat || now >= combatCheckAt) {
@@ -528,6 +549,8 @@ struct Ambush {
             CallNative(RequestModel, option->model, 0);
             return nullptr;
         }
+        if (!failure && outfitRequest >= 0 &&
+            (now < outfitCheckAt || !ReadNative(IsOutfitRequestValid, outfitRequest))) return nullptr;
 
         if (!failure) {
             NativeVector position{};
@@ -537,8 +560,20 @@ struct Ambush {
                 if (!enemy || !ReadNative(DoesEntityExist, enemy)) failure = "spawn_failed";
             }
         }
+        if (outfitRequest >= 0) {
+            if (!failure && !ReadNative(ApplyOutfit, outfitRequest, enemy, 1, 0)) {
+                cleanup = true;
+                failure = "no se pudo aplicar el atuendo del cavernícola";
+            }
+            CallNative(ReleaseOutfit, outfitRequest);
+            outfitRequest = -1;
+        }
         CallNative(ReleaseModel, option->model);
         if (failure) {
+            if (cleanup && enemy) {
+                CallNative(SetMissionEntity, enemy, 1, 0);
+                return failure;
+            }
             option = nullptr;
             enemy = 0;
             cleanup = false;
@@ -546,8 +581,8 @@ struct Ambush {
         }
 
         CallNative(SetMissionEntity, enemy, 1, 0);
-        CallNative(EquipOutfitPreset, enemy, option->outfit, 0);
         if (option->outfit) CallNative(UpdatePedVariation, enemy, 0, 1, 1, 1, 0);
+        else CallNative(EquipOutfitPreset, enemy, 0, 0);
         if (ReadNative(IsEntityInWater, enemy)) {
             cleanup = true;
             return "unsafe_spawn";
