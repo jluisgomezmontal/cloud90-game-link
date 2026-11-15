@@ -12,6 +12,7 @@
 #include <filesystem>
 #include <fstream>
 #include <list>
+#include <random>
 #include <string_view>
 #include <unordered_set>
 #include <vector>
@@ -74,8 +75,14 @@ constexpr UINT64 BelongsToScript = 0x622B1980CBE13332;
 constexpr UINT64 SetMissionEntity = 0xDC19C288082E586E;
 constexpr UINT64 EquipOutfitPreset = 0x77FF8D35EEC6BBC4;
 constexpr UINT64 UpdatePedVariation = 0xCC8CA3E88256E58F;
+constexpr UINT64 RequestOutfit = 0x13154A76CE0CF9AB;
+constexpr UINT64 IsOutfitRequestValid = 0xB25E57FC8E37114D;
+constexpr UINT64 ApplyOutfit = 0x74F512E29CB717E2;
+constexpr UINT64 ReleaseOutfit = 0x4592B8B9B0EF5F48;
 constexpr UINT64 GiveWeaponToPed = 0x5E3BDDBCB83F3D84;
 constexpr UINT64 TaskCombatPed = 0xF166E48407BAC484;
+constexpr UINT64 SetPedCanBeTargeted = 0x63F58F7C80513AAD;
+constexpr UINT64 BlockAmbientPedEvents = 0x9F8AA94D6D97DBF4;
 constexpr UINT64 IsPedInCombat = 0x4859F1FC66A6278E;
 constexpr std::string_view FreeRoam = "story_free_roam_candidate";
 
@@ -281,7 +288,7 @@ struct EnemyOption {
     UINT32 model;
     UINT32 weapon;
     int key;
-    int outfit = 0;
+    UINT32 outfit = 0;
 };
 
 constexpr std::array EnemyOptions{
@@ -290,12 +297,20 @@ constexpr std::array EnemyOptions{
     EnemyOption{"wolf", GameHash("a_c_wolf"), 0, VK_F3},
     EnemyOption{"bear", GameHash("a_c_bear_01"), 0, VK_F4},
     EnemyOption{"vampire", GameHash("cs_vampire"), GameHash("weapon_melee_knife_vampire"), VK_F5},
-    EnemyOption{"caveman", GameHash("a_m_m_unicorpse_01"), GameHash("weapon_melee_ancient_hatchet"), VK_F7, 45},
+    EnemyOption{"caveman", GameHash("a_m_m_unicorpse_01"), GameHash("weapon_melee_ancient_hatchet"), VK_F7, 0x2ACC5E3E},
     EnemyOption{"colm", GameHash("cs_colmodriscoll"), GameHash("weapon_repeater_carbine"), VK_F8},
     EnemyOption{"milton", GameHash("cs_miltonandrews"), GameHash("weapon_rifle_boltaction"), VK_F9},
     EnemyOption{"cave_hermit", GameHash("cs_cavehermit"), GameHash("weapon_melee_knife"), VK_F10},
     EnemyOption{"cougar", GameHash("a_c_cougar_01"), 0, VK_F11},
     EnemyOption{"alligator", GameHash("a_c_alligator_01"), 0, VK_F12},
+    EnemyOption{"feral_man", GameHash("re_wildman_01"), GameHash("weapon_melee_knife"), VK_F6},
+    EnemyOption{"francis_sinclair", GameHash("cs_francis_sinclair"), GameHash("weapon_revolver_cattleman"), VK_NUMPAD1},
+    EnemyOption{"nigel", GameHash("cs_gavin"), GameHash("weapon_revolver_cattleman"), VK_NUMPAD2},
+    EnemyOption{"panther", GameHash("a_c_panther_01"), 0, VK_NUMPAD3},
+    EnemyOption{"black_bear", GameHash("a_c_bearblack_01"), 0, VK_NUMPAD4},
+    EnemyOption{"wild_boar", GameHash("a_c_boar_01"), 0, VK_NUMPAD5},
+    EnemyOption{"coyote", GameHash("a_c_coyote_01"), 0, VK_NUMPAD6},
+    EnemyOption{"bull", GameHash("a_c_bull_01"), 0, VK_NUMPAD7},
 };
 static_assert(EnemyOptions[0].model == 0x19486791);
 static_assert(EnemyOptions[1].model == 0x1973FE45);
@@ -306,6 +321,10 @@ static_assert(EnemyOptions[5].model == 0x4C6C6086 && EnemyOptions[5].weapon == 0
 static_assert(EnemyOptions[6].model == 0xCF10E769 && EnemyOptions[7].model == 0x01004B26);
 static_assert(EnemyOptions[8].model == 0x074B53CC && EnemyOptions[9].model == 0x056154F7 &&
               EnemyOptions[10].model == 0x8F361781);
+static_assert(EnemyOptions[11].model == 0x25D32467 && EnemyOptions[12].model == 0x9634D7B5 &&
+              EnemyOptions[13].model == 0x4C5C60B2 && EnemyOptions[14].model == 0x629DDF49 &&
+              EnemyOptions[15].model == 0x2B845466 && EnemyOptions[16].model == 0x78EBDA79 &&
+              EnemyOptions[17].model == 0x1CA6B883 && EnemyOptions[18].model == 0x0BAA25A3);
 
 std::string ViewerLabel(const std::string& name) {
     // The JSON parser validates UTF-8. Keep complete code points and exclude HUD markup.
@@ -327,7 +346,7 @@ std::string ViewerLabel(const std::string& name) {
 
 using AmbushPositions = std::vector<NativeVector>;
 
-const char* FindEnemyPosition(int target, NativeVector& position, bool nearWater,
+const char* FindEnemyPosition(int target, NativeVector& position,
                               const AmbushPositions& occupied) {
     constexpr UINT64 ProbeWater = 0x2B3451FA1E3142E2;
     constexpr UINT64 GroundHeight = 0x24FA4267BB8D2431;
@@ -339,7 +358,11 @@ const char* FindEnemyPosition(int target, NativeVector& position, bool nearWater
         {0,-1,0},{-1,0,0},{1,0,0},{0,1,0},
         {-.707f,-.707f,0},{.707f,-.707f,0},{-.707f,.707f,0},{.707f,.707f,0}
     }};
-    bool foundGround = false;
+    static std::mt19937 random(static_cast<unsigned>(GetTickCount64()));
+    auto spawnDirections = directions;
+    std::array<float, 3> radii{18.0f, 25.0f, 12.0f};
+    std::shuffle(spawnDirections.begin(), spawnDirections.end(), random);
+    std::shuffle(radii.begin(), radii.end(), random);
     bool foundFallback = false;
     NativeVector fallback{};
     auto valid = [&](const NativeVector& point) {
@@ -348,14 +371,7 @@ const char* FindEnemyPosition(int target, NativeVector& position, bool nearWater
         float surface = 0;
         if (ReadNative(ProbeWater, point.x, point.y, point.z + 2.0f, 0, &surface) &&
             surface >= point.z - .1f) return false;
-        foundGround = true;
-        if (!nearWater) return true;
-        for (const auto& direction : directions) {
-            if (ReadNative(ProbeWater, point.x + direction.x * 6, point.y + direction.y * 6,
-                           point.z + 2.0f, 0, &surface) && std::abs(surface - point.z) < 2.0f)
-                return true;
-        }
-        return false;
+        return true;
     };
     auto separated = [&](const NativeVector& point) {
         if (std::none_of(occupied.begin(), occupied.end(), [&](const NativeVector& other) {
@@ -367,8 +383,8 @@ const char* FindEnemyPosition(int target, NativeVector& position, bool nearWater
         }
         return false;
     };
-    for (const float radius : {18.0f, 25.0f, 12.0f}) {
-        for (const auto& direction : directions) {
+    for (const float radius : radii) {
+        for (const auto& direction : spawnDirections) {
             const NativeVector probe{origin.x + direction.x * radius, origin.y + direction.y * radius, origin.z};
             NativeVector candidate{};
             if (ReadNative(GetSafeCoord, probe.x, probe.y, probe.z, 1, &candidate, 0) &&
@@ -380,8 +396,8 @@ const char* FindEnemyPosition(int target, NativeVector& position, bool nearWater
     }
     // Open terrain can return no navigable point. Sample actual collision surfaces
     // and reject abrupt changes in elevation before trying a spawn there.
-    for (const float radius : {18.0f, 25.0f, 12.0f}) {
-        for (const auto& direction : directions) {
+    for (const float radius : radii) {
+        for (const auto& direction : spawnDirections) {
             NativeVector point{origin.x + direction.x * radius, origin.y + direction.y * radius, 0};
             const float probeHeight = origin.z + 8.0f;
             if (!ReadNative(GroundHeight, point.x, point.y, probeHeight, &point.z, 0)) continue;
@@ -406,8 +422,7 @@ const char* FindEnemyPosition(int target, NativeVector& position, bool nearWater
         position = fallback;
         return nullptr;
     }
-    return foundGround && nearWater ? "el caimán requiere una orilla cercana" :
-        "sin suelo seco y estable cerca del jugador";
+    return "sin suelo seco y estable cerca del jugador";
 }
 
 struct Ambush {
@@ -417,6 +432,9 @@ struct Ambush {
     ULONGLONG deadline = 0;
     ULONGLONG combatCheckAt = 0;
     ULONGLONG unavailableSince = 0;
+    ULONGLONG removeBodyAt = 0;
+    ULONGLONG outfitCheckAt = 0;
+    int outfitRequest = -1;
     bool cleanup = false;
     bool reportedCombat = false;
     std::string viewer, commandId;
@@ -428,6 +446,11 @@ struct Ambush {
         if (shielded) return "shielded";
         if (!ReadNative(IsModelValid, selected.model) || !ReadNative(IsModelAPed, selected.model)) {
             return "model_unavailable";
+        }
+        if (selected.outfit) {
+            outfitRequest = ReadNative(RequestOutfit, selected.model, selected.outfit);
+            if (outfitRequest < 0) return "no se pudo solicitar el atuendo del cavernícola";
+            outfitCheckAt = now + 200;
         }
         option = &selected;
         viewer = ViewerLabel(sender);
@@ -498,9 +521,11 @@ struct Ambush {
             const bool unavailable = sample.context != FreeRoam && sample.context != "pause_menu";
             if (!unavailable) unavailableSince = 0;
             else if (!unavailableSince) unavailableSince = now;
+            const bool dead = ReadNative(IsEntityDead, enemy) != 0;
+            if (dead && !removeBodyAt) removeBodyAt = now + 5000;
             if (cleanup || (sample.ped && sample.ped != target) || sample.context == "dead" ||
                 sample.context == "story_mission" || !ReadNative(DoesEntityExist, target) ||
-                ReadNative(IsEntityDead, target) || ReadNative(IsEntityDead, enemy) ||
+                ReadNative(IsEntityDead, target) || (removeBodyAt && now >= removeBodyAt) ||
                 (unavailableSince && now - unavailableSince >= 15000)) {
                 cleanup = true;
                 int handle = enemy;
@@ -510,6 +535,7 @@ struct Ambush {
                 enemy = 0;
                 return "entity_removed";
             }
+            if (dead) return nullptr;
             if (!reportedCombat) {
                 const bool inCombat = ReadNative(IsPedInCombat, enemy, target) != 0;
                 if (inCombat || now >= combatCheckAt) {
@@ -528,17 +554,31 @@ struct Ambush {
             CallNative(RequestModel, option->model, 0);
             return nullptr;
         }
+        if (!failure && outfitRequest >= 0 &&
+            (now < outfitCheckAt || !ReadNative(IsOutfitRequestValid, outfitRequest))) return nullptr;
 
         if (!failure) {
             NativeVector position{};
-            failure = FindEnemyPosition(target, position, option->model == GameHash("a_c_alligator_01"), occupied);
+            failure = FindEnemyPosition(target, position, occupied);
             if (!failure) {
                 enemy = ReadNative(CreatePed, option->model, position.x, position.y, position.z, 0.0f, 0, 1, 0, 0);
                 if (!enemy || !ReadNative(DoesEntityExist, enemy)) failure = "spawn_failed";
             }
         }
+        if (outfitRequest >= 0) {
+            if (!failure && !ReadNative(ApplyOutfit, outfitRequest, enemy, 1, 0)) {
+                cleanup = true;
+                failure = "no se pudo aplicar el atuendo del cavernícola";
+            }
+            CallNative(ReleaseOutfit, outfitRequest);
+            outfitRequest = -1;
+        }
         CallNative(ReleaseModel, option->model);
         if (failure) {
+            if (cleanup && enemy) {
+                CallNative(SetMissionEntity, enemy, 1, 0);
+                return failure;
+            }
             option = nullptr;
             enemy = 0;
             cleanup = false;
@@ -546,13 +586,15 @@ struct Ambush {
         }
 
         CallNative(SetMissionEntity, enemy, 1, 0);
-        CallNative(EquipOutfitPreset, enemy, option->outfit, 0);
         if (option->outfit) CallNative(UpdatePedVariation, enemy, 0, 1, 1, 1, 0);
+        else CallNative(EquipOutfitPreset, enemy, 0, 0);
         if (ReadNative(IsEntityInWater, enemy)) {
             cleanup = true;
             return "unsafe_spawn";
         }
         if (option->weapon) {
+            CallNative(SetPedCanBeTargeted, enemy, 1);
+            CallNative(BlockAmbientPedEvents, enemy, 1);
             CallNative(GiveWeaponToPed, enemy, option->weapon, 30, 1, 0, 0, 0, 0.0f, 0.0f,
                        GameHash("add_reason_default"), 1, 0.0f, 0);
         }
@@ -787,7 +829,7 @@ public:
             }
             capabilities.push_back("bandit_ambush");
         }
-        WriteStatus({{"session", session}, {"bridgeVersion", "cloud90-rdr2-2"},
+        WriteStatus({{"session", session}, {"bridgeVersion", "cloud90-rdr2-3"},
                      {"pid", GetCurrentProcessId()}, {"heartbeatMs", now}, {"epoch", epoch},
                      {"inPlay", playing}, {"capabilities", capabilities}, {"acks", acks}});
     }
