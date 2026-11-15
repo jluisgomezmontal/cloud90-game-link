@@ -81,6 +81,8 @@ constexpr UINT64 ApplyOutfit = 0x74F512E29CB717E2;
 constexpr UINT64 ReleaseOutfit = 0x4592B8B9B0EF5F48;
 constexpr UINT64 GiveWeaponToPed = 0x5E3BDDBCB83F3D84;
 constexpr UINT64 TaskCombatPed = 0xF166E48407BAC484;
+constexpr UINT64 SetPedCanBeTargeted = 0x63F58F7C80513AAD;
+constexpr UINT64 BlockAmbientPedEvents = 0x9F8AA94D6D97DBF4;
 constexpr UINT64 IsPedInCombat = 0x4859F1FC66A6278E;
 constexpr std::string_view FreeRoam = "story_free_roam_candidate";
 
@@ -301,6 +303,14 @@ constexpr std::array EnemyOptions{
     EnemyOption{"cave_hermit", GameHash("cs_cavehermit"), GameHash("weapon_melee_knife"), VK_F10},
     EnemyOption{"cougar", GameHash("a_c_cougar_01"), 0, VK_F11},
     EnemyOption{"alligator", GameHash("a_c_alligator_01"), 0, VK_F12},
+    EnemyOption{"feral_man", GameHash("re_wildman_01"), GameHash("weapon_melee_knife"), VK_F6},
+    EnemyOption{"francis_sinclair", GameHash("cs_francis_sinclair"), GameHash("weapon_revolver_cattleman"), VK_NUMPAD1},
+    EnemyOption{"nigel", GameHash("cs_gavin"), GameHash("weapon_revolver_cattleman"), VK_NUMPAD2},
+    EnemyOption{"panther", GameHash("a_c_panther_01"), 0, VK_NUMPAD3},
+    EnemyOption{"black_bear", GameHash("a_c_bearblack_01"), 0, VK_NUMPAD4},
+    EnemyOption{"wild_boar", GameHash("a_c_boar_01"), 0, VK_NUMPAD5},
+    EnemyOption{"coyote", GameHash("a_c_coyote_01"), 0, VK_NUMPAD6},
+    EnemyOption{"bull", GameHash("a_c_bull_01"), 0, VK_NUMPAD7},
 };
 static_assert(EnemyOptions[0].model == 0x19486791);
 static_assert(EnemyOptions[1].model == 0x1973FE45);
@@ -311,6 +321,10 @@ static_assert(EnemyOptions[5].model == 0x4C6C6086 && EnemyOptions[5].weapon == 0
 static_assert(EnemyOptions[6].model == 0xCF10E769 && EnemyOptions[7].model == 0x01004B26);
 static_assert(EnemyOptions[8].model == 0x074B53CC && EnemyOptions[9].model == 0x056154F7 &&
               EnemyOptions[10].model == 0x8F361781);
+static_assert(EnemyOptions[11].model == 0x25D32467 && EnemyOptions[12].model == 0x9634D7B5 &&
+              EnemyOptions[13].model == 0x4C5C60B2 && EnemyOptions[14].model == 0x629DDF49 &&
+              EnemyOptions[15].model == 0x2B845466 && EnemyOptions[16].model == 0x78EBDA79 &&
+              EnemyOptions[17].model == 0x1CA6B883 && EnemyOptions[18].model == 0x0BAA25A3);
 
 std::string ViewerLabel(const std::string& name) {
     // The JSON parser validates UTF-8. Keep complete code points and exclude HUD markup.
@@ -332,7 +346,7 @@ std::string ViewerLabel(const std::string& name) {
 
 using AmbushPositions = std::vector<NativeVector>;
 
-const char* FindEnemyPosition(int target, NativeVector& position, bool nearWater,
+const char* FindEnemyPosition(int target, NativeVector& position,
                               const AmbushPositions& occupied) {
     constexpr UINT64 ProbeWater = 0x2B3451FA1E3142E2;
     constexpr UINT64 GroundHeight = 0x24FA4267BB8D2431;
@@ -349,7 +363,6 @@ const char* FindEnemyPosition(int target, NativeVector& position, bool nearWater
     std::array<float, 3> radii{18.0f, 25.0f, 12.0f};
     std::shuffle(spawnDirections.begin(), spawnDirections.end(), random);
     std::shuffle(radii.begin(), radii.end(), random);
-    bool foundGround = false;
     bool foundFallback = false;
     NativeVector fallback{};
     auto valid = [&](const NativeVector& point) {
@@ -358,14 +371,7 @@ const char* FindEnemyPosition(int target, NativeVector& position, bool nearWater
         float surface = 0;
         if (ReadNative(ProbeWater, point.x, point.y, point.z + 2.0f, 0, &surface) &&
             surface >= point.z - .1f) return false;
-        foundGround = true;
-        if (!nearWater) return true;
-        for (const auto& direction : directions) {
-            if (ReadNative(ProbeWater, point.x + direction.x * 6, point.y + direction.y * 6,
-                           point.z + 2.0f, 0, &surface) && std::abs(surface - point.z) < 2.0f)
-                return true;
-        }
-        return false;
+        return true;
     };
     auto separated = [&](const NativeVector& point) {
         if (std::none_of(occupied.begin(), occupied.end(), [&](const NativeVector& other) {
@@ -416,8 +422,7 @@ const char* FindEnemyPosition(int target, NativeVector& position, bool nearWater
         position = fallback;
         return nullptr;
     }
-    return foundGround && nearWater ? "el caimán requiere una orilla cercana" :
-        "sin suelo seco y estable cerca del jugador";
+    return "sin suelo seco y estable cerca del jugador";
 }
 
 struct Ambush {
@@ -554,7 +559,7 @@ struct Ambush {
 
         if (!failure) {
             NativeVector position{};
-            failure = FindEnemyPosition(target, position, option->model == GameHash("a_c_alligator_01"), occupied);
+            failure = FindEnemyPosition(target, position, occupied);
             if (!failure) {
                 enemy = ReadNative(CreatePed, option->model, position.x, position.y, position.z, 0.0f, 0, 1, 0, 0);
                 if (!enemy || !ReadNative(DoesEntityExist, enemy)) failure = "spawn_failed";
@@ -588,6 +593,8 @@ struct Ambush {
             return "unsafe_spawn";
         }
         if (option->weapon) {
+            CallNative(SetPedCanBeTargeted, enemy, 1);
+            CallNative(BlockAmbientPedEvents, enemy, 1);
             CallNative(GiveWeaponToPed, enemy, option->weapon, 30, 1, 0, 0, 0, 0.0f, 0.0f,
                        GameHash("add_reason_default"), 1, 0.0f, 0);
         }
@@ -822,7 +829,7 @@ public:
             }
             capabilities.push_back("bandit_ambush");
         }
-        WriteStatus({{"session", session}, {"bridgeVersion", "cloud90-rdr2-2"},
+        WriteStatus({{"session", session}, {"bridgeVersion", "cloud90-rdr2-3"},
                      {"pid", GetCurrentProcessId()}, {"heartbeatMs", now}, {"epoch", epoch},
                      {"inPlay", playing}, {"capabilities", capabilities}, {"acks", acks}});
     }
