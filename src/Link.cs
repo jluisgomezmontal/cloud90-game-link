@@ -15,7 +15,7 @@ namespace Cloud90.GameLink
 {
     internal sealed class Link
     {
-        public const string Version = "cloud90-game-link-1.8.3";
+        public const string Version = "cloud90-game-link-1.8.4";
         // "hades", "kof2002": the token and the hello are this game's.
         public readonly string Game;
         readonly string title;
