@@ -41,15 +41,19 @@ namespace Cloud90.Blasphemous {
         private readonly Dictionary<string,ulong> cooldowns = new Dictionary<string,ulong>();
         private readonly HashSet<string> seen = new HashSet<string>();
         private readonly Queue<object> acks = new Queue<object>();
-        private string session, folder, epoch, room, viewer;
+        private string session, folder, epoch, room;
         private Penitent owner;
         private LevelInitializer level;
         private int generation, pid;
-        private ulong nextPoll, shield, sword, slow, noDash, invulnerable, ambushUntil;
+        private ulong nextPoll, shield, sword, slow, noDash, invulnerable;
         private float swordFactor, oldSpeed, appliedSpeed;
-        private GameObject spawned;
-        private Enemy enemy;
-        private string pendingSpawn;
+        private sealed class AmbushEnemy {
+            public GameObject Object;
+            public Enemy Enemy;
+            public string Viewer, PendingId;
+            public ulong Until;
+        }
+        private readonly List<AmbushEnemy> ambushes = new List<AmbushEnemy>();
         private bool paused, pauseSync, stopped = true;
         private bool canAmbush;
         private Harmony hooks;
@@ -152,11 +156,14 @@ namespace Cloud90.Blasphemous {
                 if (paused) Clear();
             }
             if (slow != 0 && (now >= slow || !Grounded(player))) RestoreSpeed();
-            if (pendingSpawn != null && enemy && enemy.isActiveAndEnabled) {
-                Ack(pendingSpawn, "ok");
-                pendingSpawn = null;
+            for (int i = ambushes.Count - 1; i >= 0; i--) {
+                var ambush = ambushes[i];
+                if (ambush.PendingId != null && ambush.Enemy && ambush.Enemy.isActiveAndEnabled) {
+                    Ack(ambush.PendingId, "ok");
+                    ambush.PendingId = null;
+                }
+                if (now >= ambush.Until || !ambush.Enemy || ambush.Enemy.Status.Dead) RemoveSpawn(i);
             }
-            if (ambushUntil != 0 && (now >= ambushUntil || !enemy || enemy.Status.Dead)) RemoveSpawn();
             if (now < nextPoll) return;
             nextPoll = now + 125;
             Poll(now);
@@ -291,7 +298,6 @@ namespace Cloud90.Blasphemous {
 
         private string Spawn(string choice, string sender, ulong now, string id) {
             if (!canAmbush) return "emboscada no disponible durante un jefe";
-            if (spawned) return "ya hay una emboscada";
             if (!Grounded(owner)) return "requiere estar en suelo";
             string model;
             if (!Enemies.TryGetValue(choice ?? "", out model)) return "enemigo desconocido";
@@ -304,31 +310,36 @@ namespace Cloud90.Blasphemous {
                 Vector2.Distance(p.Position, owner.transform.position) <= 10f &&
                 (!p.SpawnedEnemy || p.SpawnedEnemy.Status.Dead));
             if (!point) return "sin punto compatible para este enemigo en la sala";
-            spawned = Instantiate(point.SelectedEnemy, point.Position, Quaternion.identity);
+            var spawned = Instantiate(point.SelectedEnemy, point.Position, Quaternion.identity);
             spawned.transform.SetParent(level.transform, true);
-            enemy = spawned.GetComponent<Enemy>();
+            var enemy = spawned.GetComponent<Enemy>();
             enemy.SpawningId = -1;
             enemy.purgePointsWhenDead = 0;
             var behavior = spawned.GetComponentInChildren<EnemyBehaviour>();
             if (behavior) behavior.EnableBehaviourOnLoad = true;
-            viewer = String.Concat((sender ?? "").Where(c => !Char.IsControl(c) && c != '<' && c != '>').Take(28).ToArray());
-            pendingSpawn = id;
-            ambushUntil = now + 30000;
+            ambushes.Add(new AmbushEnemy {
+                Object = spawned, Enemy = enemy, PendingId = id, Until = now + 30000,
+                Viewer = String.Concat((sender ?? "").Where(c => !Char.IsControl(c) && c != '<' && c != '>').Take(28).ToArray())
+            });
             return null;
         }
 
         private void OnGUI() {
-            if (Event.current.type != EventType.Repaint || !Running(ambushUntil) || !enemy || enemy.Status.Dead ||
-                String.IsNullOrEmpty(viewer) || !Camera.main) return;
-            var renderer = spawned.GetComponentInChildren<SpriteRenderer>();
-            if (!renderer || !renderer.isVisible) return;
-            var anchor = renderer.bounds.center;
-            anchor.y = renderer.bounds.max.y + .25f;
-            var pos = Camera.main.WorldToScreenPoint(anchor);
-            if (pos.z <= 0 || pos.x < 0 || pos.x > Screen.width || pos.y < 0 || pos.y > Screen.height) return;
+            var camera = Camera.main;
+            if (Event.current.type != EventType.Repaint || !camera || ambushes.Count == 0) return;
             var style = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, richText = false };
             style.normal.textColor = Color.white;
-            GUI.Label(new Rect(pos.x - 125, Screen.height - pos.y - 20, 250, 22), viewer, style);
+            foreach (var ambush in ambushes) {
+                if (!Running(ambush.Until) || !ambush.Enemy || ambush.Enemy.Status.Dead ||
+                    String.IsNullOrEmpty(ambush.Viewer)) continue;
+                var renderer = ambush.Object.GetComponentInChildren<SpriteRenderer>();
+                if (!renderer || !renderer.isVisible) continue;
+                var anchor = renderer.bounds.center;
+                anchor.y = renderer.bounds.max.y + .25f;
+                var pos = camera.WorldToScreenPoint(anchor);
+                if (pos.z <= 0 || pos.x < 0 || pos.x > Screen.width || pos.y < 0 || pos.y > Screen.height) continue;
+                GUI.Label(new Rect(pos.x - 125, Screen.height - pos.y - 20, 250, 22), ambush.Viewer, style);
+            }
         }
 
         private void RestoreSpeed() {
@@ -338,19 +349,17 @@ namespace Cloud90.Blasphemous {
             slow = 0;
         }
 
-        private void RemoveSpawn() {
-            if (pendingSpawn != null) Ack(pendingSpawn, "resultado incierto; enemigo sin confirmar");
-            pendingSpawn = null;
-            if (spawned) { spawned.SetActive(false); Destroy(spawned); }
-            spawned = null;
-            enemy = null;
-            ambushUntil = 0;
+        private void RemoveSpawn(int index) {
+            var ambush = ambushes[index];
+            if (ambush.PendingId != null) Ack(ambush.PendingId, "resultado incierto; enemigo sin confirmar");
+            if (ambush.Object) { ambush.Object.SetActive(false); Destroy(ambush.Object); }
+            ambushes.RemoveAt(index);
         }
 
         private void Clear() {
             shield = sword = noDash = invulnerable = 0;
             RestoreSpeed();
-            RemoveSpawn();
+            for (int i = ambushes.Count - 1; i >= 0; i--) RemoveSpawn(i);
         }
     }
 }

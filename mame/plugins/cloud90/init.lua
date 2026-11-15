@@ -77,7 +77,6 @@ local MSLUG3 = {
 		freeHead = 0x10540C, freeCount = 0x105410, idle = 0x567A,
 		enemyTag = 0x10C120,          -- slot+0x44 of an enemy (its hit list)
 	},
-	maxClones = 6,
 	keepFree = 16,
 }
 
@@ -97,7 +96,7 @@ function exports.startplugin()
 		return
 	end
 	local S = {
-		seen = {}, seenOrder = {}, active = {}, frame = 0, clones = {},
+		seen = {}, seenOrder = {}, active = {}, frame = 0,
 		shieldUntil = 0, graceUntil = 0, paused = false,
 	}
 	exports.state = S
@@ -261,14 +260,6 @@ function exports.startplugin()
 		return mem:read_u32( s + 0x0C ) ~= T.idle and mem:read_u32( s + 0x44 ) == T.enemyTag
 			and mem:read_u32( s + 0x18 ) == T.root
 	end
-	local function liveClones()
-		local n, keep = 0, {}
-		for _, c in ipairs( S.clones ) do
-			if mem:read_u32( c.node ) ~= T.idle and now() - c.t < MAX_TIMED then n = n + 1; keep[#keep + 1] = c end
-		end
-		S.clones = keep
-		return n
-	end
 	-- A copy of enemy slot s in a node popped from the game's free stack,
 	-- linked after it in the task list, a little to one side.
 	local function clone( s )
@@ -289,7 +280,6 @@ function exports.startplugin()
 		mem:write_u32( src + 4, node )
 		local dx = math.random( 12, 24 ) * ( math.random( 2 ) == 1 and -1 or 1 )
 		for _, off in ipairs( { 0x34, 0x48, 0x50 } ) do mem:write_u16( d + off, ( mem:read_u16( s + off ) + dx ) & 0xFFFF ) end
-		S.clones[#S.clones + 1] = { node = node, t = now() }
 		return true
 	end
 
@@ -339,13 +329,11 @@ function exports.startplugin()
 		end }
 		list.spawn_enemies = { troll = true, run = function( e )
 			local want = math.min( math.max( tonumber( e.arg ) or 1, 1 ), 3 )
-			local room = game.maxClones - liveClones()
-			if room <= 0 then return false, NA end
 			local enemies = {}
 			for k = 0, T.count - 1 do if isEnemy( slot( k ) ) then enemies[#enemies + 1] = slot( k ) end end
 			if #enemies == 0 then return false, NA end
 			local made = 0
-			for _ = 1, math.min( want, room ) do
+			for _ = 1, want do
 				if clone( enemies[ math.random( #enemies ) ] ) then made = made + 1 end
 			end
 			if made == 0 then return false, NA end

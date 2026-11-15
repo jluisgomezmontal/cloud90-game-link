@@ -71,7 +71,6 @@ Con los mismos dos archivos de activación, usa estos atajos en exploración lib
 | Ctrl + Shift + F3 | Lobo | `a_c_wolf` |
 | Ctrl + Shift + F4 | Oso | `a_c_bear_01` |
 | Ctrl + Shift + F5 | Vampiro de Saint Denis con daga | `cs_vampire` |
-| Ctrl + Shift + F6 | Micah Bell | `cs_micahbell` |
 | Ctrl + Shift + F7 | Cavernícola | `a_m_m_unicorpse_01`, variante 45 |
 | Ctrl + Shift + F8 | Colm O’Driscoll | `cs_colmodriscoll` |
 | Ctrl + Shift + F9 | Andrew Milton | `cs_miltonandrews` |
@@ -81,7 +80,7 @@ Con los mismos dos archivos de activación, usa estos atajos en exploración lib
 
 Con Game Link Preview 3, una emboscada por regalo muestra el usuario del remitente sobre el enemigo visible. El nombre visible sirve de respaldo. Los espectadores silenciados u ocultos aparecen como «Alguien». En modo Historia, verifica el nombre con un regalo real y que desaparezca al morir el enemigo o cerrar la emboscada. Comprueba la apariencia del cavernícola con la variante 45 y el ataque de cada enemigo nuevo.
 
-La emboscada busca suelo compatible cerca del jugador. Admite un enemigo vivo a la vez y puedes invocar otro al derrotarlo, sin temporizador de enfriamiento propio. El enemigo permanece durante el combate. Game Link lo retira al pausar los efectos, entrar en una misión, perder la conexión de forma sostenida o cambiar de personaje. Una interrupción breve de la cámara o del control permite continuar la emboscada.
+La emboscada admite varios enemigos simultáneos sin tope fijo en el mod, con una invocación por efecto y sin temporizador de enfriamiento propio. Busca suelo compatible cerca del jugador y separa los puntos de aparición de los enemigos activos. Cada enemigo muestra el nombre de quien activó su efecto. Game Link los retira al pausar los efectos, entrar en una misión, perder la conexión de forma sostenida o cambiar de personaje. Una interrupción breve de la cámara o del control permite continuar la emboscada.
 
 Revisa las entradas `effect=bandit_ambush` del registro. `spawned` confirma la creación del NPC. `combat_confirmed` confirma que el juego detectó combate con el jugador. Prueba cada modelo en terreno abierto, revisa que el vampiro use la daga y verifica la limpieza al pausar, morir o entrar en una misión. El efecto reutiliza el modelo del vampiro y le asigna combate local.
 
