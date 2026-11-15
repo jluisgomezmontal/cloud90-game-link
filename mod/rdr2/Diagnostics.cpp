@@ -297,6 +297,7 @@ constexpr std::array EnemyOptions{
     EnemyOption{"wolf", GameHash("a_c_wolf"), 0, VK_F3},
     EnemyOption{"bear", GameHash("a_c_bear_01"), 0, VK_F4},
     EnemyOption{"vampire", GameHash("cs_vampire"), GameHash("weapon_melee_knife_vampire"), VK_F5},
+    // The hidden Neanderthal is outfit 45 on the game's shared corpse model.
     EnemyOption{"caveman", GameHash("a_m_m_unicorpse_01"), GameHash("weapon_melee_ancient_hatchet"), VK_F7, 0x2ACC5E3E},
     EnemyOption{"colm", GameHash("cs_colmodriscoll"), GameHash("weapon_repeater_carbine"), VK_F8},
     EnemyOption{"milton", GameHash("cs_miltonandrews"), GameHash("weapon_rifle_boltaction"), VK_F9},
@@ -311,6 +312,8 @@ constexpr std::array EnemyOptions{
     EnemyOption{"wild_boar", GameHash("a_c_boar_01"), 0, VK_NUMPAD5},
     EnemyOption{"coyote", GameHash("a_c_coyote_01"), 0, VK_NUMPAD6},
     EnemyOption{"bull", GameHash("a_c_bull_01"), 0, VK_NUMPAD7},
+    EnemyOption{"legendary_boar", GameHash("a_c_boarlegendary_01"), 0, VK_NUMPAD8},
+    EnemyOption{"tatanka_bison", GameHash("a_c_buffalo_tatanka_01"), 0, VK_NUMPAD9},
 };
 static_assert(EnemyOptions[0].model == 0x19486791);
 static_assert(EnemyOptions[1].model == 0x1973FE45);
@@ -325,6 +328,7 @@ static_assert(EnemyOptions[11].model == 0x25D32467 && EnemyOptions[12].model == 
               EnemyOptions[13].model == 0x4C5C60B2 && EnemyOptions[14].model == 0x629DDF49 &&
               EnemyOptions[15].model == 0x2B845466 && EnemyOptions[16].model == 0x78EBDA79 &&
               EnemyOptions[17].model == 0x1CA6B883 && EnemyOptions[18].model == 0x0BAA25A3);
+static_assert(EnemyOptions[19].model == 0xDE99DA6D && EnemyOptions[20].model == 0x15E9B494);
 
 std::string ViewerLabel(const std::string& name) {
     // The JSON parser validates UTF-8. Keep complete code points and exclude HUD markup.
@@ -829,7 +833,7 @@ public:
             }
             capabilities.push_back("bandit_ambush");
         }
-        WriteStatus({{"session", session}, {"bridgeVersion", "cloud90-rdr2-3"},
+        WriteStatus({{"session", session}, {"bridgeVersion", "cloud90-rdr2-4"},
                      {"pid", GetCurrentProcessId()}, {"heartbeatMs", now}, {"epoch", epoch},
                      {"inPlay", playing}, {"capabilities", capabilities}, {"acks", acks}});
     }
