@@ -81,7 +81,7 @@ try {
             $got = Get-Content -LiteralPath $log -Encoding UTF8
             $got | ForEach-Object { "  server: $_" }
             $helloGame = if ($mode -eq 'celeste') { 'celeste' } elseif ($mode -eq 'ctr') { 'ctrnf' } elseif ($mode -eq 'cuphead') { 'cuphead' } elseif ($mode -eq 'smw') { 'smw' } elseif ($mode -eq 'mvsc') { 'mvsc' } elseif ($mode -eq 'mslugx') { 'mslugx' } elseif ($mode -eq 'gow2') { 'gow2' } else { 'kof2002' }
-            $helloVersion = if ($mode -eq 'celeste') { 'cloud90-game-link-celeste-1' } else { $clientVersion }
+            $helloVersion = if ($mode -eq 'celeste') { 'cloud90-game-link-celeste-2' } else { $clientVersion }
             $hello = '"type":"hello","game":"' + $helloGame + '","version":"' + $helloVersion + '"'
             if (-not ($got -cmatch [regex]::Escape($hello))) { "FAIL: expected hello for $helloGame with version $helloVersion"; $failed++ }
             if ($mode -eq 'ctr' -and -not ($got -match '"type":"ack","id":"e-42","ok":true')) { "FAIL: no CTR ack"; $failed++ }

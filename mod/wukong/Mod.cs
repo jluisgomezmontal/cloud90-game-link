@@ -13,7 +13,7 @@ using UnrealEngine.Engine;
 using UnrealEngine.Runtime;
 
 namespace Cloud90.Wukong {
-    public sealed class Mod : ICSharpMod {
+    public sealed partial class Mod : ICSharpMod {
         public string Name => "Cloud90.Wukong";
         public string Version => "1.0.0";
         private static Mod current;
@@ -38,7 +38,7 @@ namespace Cloud90.Wukong {
             {"slow",45},{"no_dodge",45},{"invulnerable",60},{"kill",120}
         };
         private static readonly HashSet<string> Troll = new HashSet<string> {
-            "damage","mana_empty","focus_remove","staff_weak","slow","no_dodge","kill"
+            "damage","mana_empty","focus_remove","staff_weak","slow","no_dodge","kill","ambush","ambush_boss"
         };
 
         public void Init() {
@@ -50,6 +50,7 @@ namespace Cloud90.Wukong {
             folder = Path.Combine(root, session);
             using (var process = Process.GetCurrentProcess()) pid = process.Id;
             current = this;
+            LoadAmbushProfile(root);
             harmony.Patch(AccessTools.Method(typeof(BGUPlayerCharacterCS), nameof(BGUPlayerCharacterCS.AfterInitAllComp)),
                 postfix: new HarmonyMethod(typeof(Mod), nameof(Attach)));
         }
@@ -128,8 +129,7 @@ namespace Cloud90.Wukong {
                                 string result;
                                 try { result = Apply(inbox, command, now); }
                                 catch (Exception) { result = "resultado incierto; efecto sin confirmar"; }
-                                acks.Enqueue(new { id, result });
-                                if (acks.Count > 100) acks.Dequeue();
+                                if (result != null) Ack(id, result);
                             }
                         }
                     }
@@ -138,6 +138,10 @@ namespace Cloud90.Wukong {
             catch (ArgumentException) { }
             catch (InvalidOperationException) { }
             if (!fresh || owner == null) Clear();
+            else {
+                CaptureAmbushDiagnostics();
+                TickAmbushes(now);
+            }
             WriteStatus(now);
         }
 
@@ -146,11 +150,17 @@ namespace Cloud90.Wukong {
             try {
                 File.WriteAllText(temp, json.Serialize(new {
                     session, epoch, pid, heartbeatMs = now, bridgeVersion = "cloud90-wukong-1",
-                    inPlay = owner != null, capabilities = owner == null ? new string[0] : Cooldown.Keys.ToArray(), acks
+                    inPlay = owner != null, capabilities = owner == null ? new string[0] :
+                        Cooldown.Keys.Concat(AmbushCapabilities()).ToArray(), acks
                 }));
                 if (File.Exists(path)) File.Replace(temp,path,null);
                 else File.Move(temp,path);
             } catch (IOException) { }
+        }
+
+        private void Ack(string id, string result) {
+            acks.Enqueue(new { id, result });
+            if (acks.Count > 100) acks.Dequeue();
         }
 
         private string Apply(Dictionary<string,object> inbox, Dictionary<string,object> cmd, ulong now) {
@@ -159,6 +169,8 @@ namespace Cloud90.Wukong {
             ulong expiry = ULong(cmd,"expiresMs");
             if (expiry <= now || expiry - now > 10000) return "caducado";
             string effect = Text(cmd,"effect");
+            if (effect == "ambush" || effect == "ambush_boss")
+                return StartAmbush(inbox, cmd, now, expiry, effect == "ambush_boss");
             if (!Cooldown.TryGetValue(effect,out int seconds)) return "efecto desconocido";
             if (availableAt.TryGetValue(effect,out ulong allowed) && allowed > now) return "en enfriamiento";
             if (Troll.Contains(effect) && now < shield) return "escudo activo";
@@ -245,6 +257,7 @@ namespace Cloud90.Wukong {
 
         private void Clear() {
             shield = 0;
+            ClearAmbushes();
             RestoreAttack();
             foreach (var state in ownedStates.Keys.ToArray()) RemoveState(state);
         }
