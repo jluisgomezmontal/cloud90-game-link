@@ -15,7 +15,7 @@ namespace Cloud90.GameLink
 {
     internal sealed class Link
     {
-        public const string Version = "cloud90-game-link-1.8.6";
+        public const string Version = "cloud90-game-link-1.8.7";
         // Keep the wire version accepted by the backend across installer releases.
         public const string ProtocolVersion = "cloud90-game-link-1.8.0-dev";
         // "hades", "kof2002": the token and the hello are this game's.
