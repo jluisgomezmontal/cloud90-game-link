@@ -729,9 +729,21 @@ class LiveBridge {
     unsigned generation = 0;
     int lastPed = 0;
     ULONGLONG nextPoll = 0, shieldUntil = 0;
+    int infiniteAmmoPed = 0;
+    ULONGLONG infiniteAmmoUntil = 0;
     ULONGLONG inboxMissingSince = 0;
     std::array<ULONGLONG, PreviewEffects.size()> availableAt{};
     Ambushes ambushes;
+
+    // This native toggles the clip flag on the ped without modifying inventory.
+    static constexpr UINT64 SetInfiniteAmmoClip = 0xFBAA1E06B6BCA741;
+
+    void StopInfiniteAmmo() {
+        if (infiniteAmmoPed && ReadNative(DoesEntityExist, infiniteAmmoPed))
+            CallNative(SetInfiniteAmmoClip, infiniteAmmoPed, 0);
+        infiniteAmmoPed = 0;
+        infiniteAmmoUntil = 0;
+    }
 
     static bool ValidId(const std::string& id) {
         return !id.empty() && id.size() <= 80 && id.find_first_not_of(
@@ -776,6 +788,16 @@ class LiveBridge {
         if (expires <= now || expires - now > 10000) return "caducado";
         const auto effect = command.value("effect", "");
         const bool safe = inbox.value("noDeath", true) || command.value("safe", true);
+        if (effect == "ammo_infinite") {
+            const auto duration = std::clamp(command.value("ms", 20000), 1000, 60000);
+            if (infiniteAmmoPed != sample.ped) {
+                StopInfiniteAmmo();
+                CallNative(SetInfiniteAmmoClip, sample.ped, 1);
+                infiniteAmmoPed = sample.ped;
+            }
+            infiniteAmmoUntil = std::max(infiniteAmmoUntil, now + duration);
+            return "ok";
+        }
         if (effect == "bandit_ambush") {
             if (safe) return "modo sin morir activo";
             const auto arg = command.value("arg", "");
@@ -828,6 +850,8 @@ public:
     void Tick(const Sample& sample, ULONGLONG now) {
         const bool playing = sample.context == FreeRoam;
         const int ped = playing ? sample.ped : 0;
+        if (infiniteAmmoPed && (ped != infiniteAmmoPed || now >= infiniteAmmoUntil))
+            StopInfiniteAmmo();
         if (ped != lastPed || epoch.empty()) {
             epoch = session + "_" + std::to_string(++generation);
             shieldUntil = 0;
@@ -852,7 +876,10 @@ public:
         }
         if (fresh) inboxMissingSince = 0;
         else if (!inboxMissingSince) inboxMissingSince = now;
-        if (paused) shieldUntil = 0;
+        if (paused) {
+            shieldUntil = 0;
+            StopInfiniteAmmo();
+        }
         for (auto& ambush : ambushes) {
             if (!ambush.option) continue;
             if (paused && (!ambush.enemy || fresh || now - inboxMissingSince >= 15000))
@@ -890,6 +917,7 @@ public:
                 capabilities.push_back(effect.name);
             }
             capabilities.push_back("bandit_ambush");
+            capabilities.push_back("ammo_infinite");
         }
         WriteStatus({{"session", session}, {"bridgeVersion", "cloud90-rdr2-5"},
                      {"pid", GetCurrentProcessId()}, {"heartbeatMs", now}, {"epoch", epoch},
