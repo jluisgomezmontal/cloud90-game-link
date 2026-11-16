@@ -234,22 +234,26 @@ namespace Cloud90.Cuphead
             camera.orthographicSize = appliedSize;
         }
 
-        PlatformingLevelGroundMovementEnemy EnemyProvider()
+        PlatformingLevelGroundMovementEnemy EnemyProvider(bool randomize = false)
         {
             if (!(player is LevelPlayerController) || level == null || (level.CurrentLevel.ToString() != "Platforming_Level_1_1" && level.CurrentLevel.ToString() != "Platforming_Level_1_2")) return null;
+            PlatformingLevelGroundMovementEnemy selected = null;
+            int count = 0;
             foreach (var spawner in UnityEngine.Object.FindObjectsOfType<PlatformingLevelGroundMovementEnemySpawner>())
             {
                 var prefab = spawner.enemyPrefab;
                 if (prefab == null) continue;
                 string id = prefab.ID.ToString();
-                if (id == "blue_goblin" || id == "pink_goblin" || id == "flower_grunt" || id == "mushroom") return prefab;
+                if (id != "blue_goblin" && id != "pink_goblin" && id != "flower_grunt" && id != "mushroom") continue;
+                if (!randomize) return prefab;
+                if (UnityEngine.Random.Range(0, ++count) == 0) selected = prefab;
             }
-            return null;
+            return selected;
         }
         string SpawnEnemies(int count)
         {
             for (int i = spawned.Count - 1; i >= 0; i--) if (spawned[i].actor == null) { DestroySpawn(spawned[i]); spawned.RemoveAt(i); }
-            var prefab = EnemyProvider();
+            var prefab = EnemyProvider(true);
             if (prefab == null || CupheadLevelCamera.Current == null) return "sin enemigo compatible en este nivel";
             Rect bounds = CupheadLevelCamera.Current.Bounds;
             float x = player.center.x < bounds.center.x ? bounds.xMax - 65f : bounds.xMin + 65f;

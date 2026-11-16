@@ -9,7 +9,7 @@ namespace Cloud90.GameLink
         protected override string Plugin { get { return Package; } }
         protected override string SteamAppId { get { return "504230"; } }
         protected override string ProcessName { get { return "Celeste"; } }
-        protected override string BridgeVersion { get { return "cloud90-celeste-1"; } }
+        protected override string BridgeVersion { get { return "cloud90-celeste-2"; } }
         protected override bool ReportsPause { get { return true; } }
         protected override string PluginFolder(string root) { return CupheadInstaller.SafePath(root, "Mods"); }
         public override string Id { get { return "celeste"; } }

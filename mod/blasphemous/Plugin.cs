@@ -206,7 +206,7 @@ namespace Cloud90.Blasphemous {
                 string path = Path.Combine(folder, "status.json");
                 string temp = path + ".tmp";
                 File.WriteAllText(temp, Newtonsoft.Json.JsonConvert.SerializeObject(new {
-                    session, epoch, pid, heartbeatMs = now, bridgeVersion = "cloud90-blasphemous-1",
+                    session, epoch, pid, heartbeatMs = now, bridgeVersion = "cloud90-blasphemous-2",
                     inPlay = owner != null, paused,
                     capabilities = owner ? Cooldowns.Keys.Where(effect => effect != "ambush" || canAmbush).ToArray() : new string[0], acks
                 }));
@@ -299,16 +299,25 @@ namespace Cloud90.Blasphemous {
         private string Spawn(string choice, string sender, ulong now, string id) {
             if (!canAmbush) return "emboscada no disponible durante un jefe";
             if (!Grounded(owner)) return "requiere estar en suelo";
-            string model;
-            if (!Enemies.TryGetValue(choice ?? "", out model)) return "enemigo desconocido";
+            string model = null;
+            bool surprise = choice == "surprise";
+            if (!surprise && !Enemies.TryGetValue(choice ?? "", out model)) return "enemigo desconocido";
             var points = level.GetComponentsInChildren<EnemySpawnPoint>();
-            var point = points.FirstOrDefault(p => p && p.isActiveAndEnabled && !p.SpawnOnArena &&
+            var compatible = points.Where(p => p && p.isActiveAndEnabled && !p.SpawnOnArena &&
                 !p.EnemySpawnDisabled && p.SelectedEnemy && p.SelectedEnemy.GetComponent<Enemy>() &&
-                p.SelectedEnemy.GetComponent<Enemy>().Id == model &&
-                Mathf.Abs(p.Position.y - owner.transform.position.y) <= (choice == "bell_ghost" ? 5f : 2f) &&
+                (surprise ? Enemies.ContainsValue(p.SelectedEnemy.GetComponent<Enemy>().Id) :
+                    p.SelectedEnemy.GetComponent<Enemy>().Id == model) &&
+                Mathf.Abs(p.Position.y - owner.transform.position.y) <=
+                    (p.SelectedEnemy.GetComponent<Enemy>().Id == Enemies["bell_ghost"] ? 5f : 2f) &&
                 Vector2.Distance(p.Position, owner.transform.position) >= 4f &&
                 Vector2.Distance(p.Position, owner.transform.position) <= 10f &&
                 (!p.SpawnedEnemy || p.SpawnedEnemy.Status.Dead));
+            EnemySpawnPoint point;
+            if (surprise) {
+                var candidates = compatible.GroupBy(p => p.SelectedEnemy.GetComponent<Enemy>().Id)
+                    .Select(group => group.First()).ToArray();
+                point = candidates.Length == 0 ? null : candidates[UnityEngine.Random.Range(0, candidates.Length)];
+            } else point = compatible.FirstOrDefault();
             if (!point) return "sin punto compatible para este enemigo en la sala";
             var spawned = Instantiate(point.SelectedEnemy, point.Position, Quaternion.identity);
             spawned.transform.SetParent(level.transform, true);

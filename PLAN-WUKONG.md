@@ -32,7 +32,7 @@ Los tiempos y valores son propuestas para probar en el build instalado.
 
 ## Emboscada
 
-Un regalo selecciona una criatura y el módulo la invoca en terreno transitable, con espacio libre y lejos del santuario o de una arena en curso. Usar una lista de clases aprobadas por build. La existencia de mods de invocación demuestra viabilidad general, pero cada variante requiere probar IA, animaciones y limpieza en el build de Steam. [Give Me Everything, publicado por su autor](https://www.nexusmods.com/blackmythwukong/mods/1533)
+La vista previa actual usa el plugin C# con B1CSharpLoader. Ya hay 17 efectos implementados y la emboscada sigue pendiente. Continuar sobre ese plugin y su buzón local. Antes de exponer el efecto, identificar el build instalado y probar cómo crear un enemigo completo con IA en el hilo del juego. Registrar las clases verificadas por build. [Estado del módulo](mod/wukong/README.md)
 
 | Prioridad | Candidato | Prueba que debe pasar |
 | --- | --- | --- |
@@ -43,10 +43,25 @@ Un regalo selecciona una criatura y el módulo la invoca en terreno transitable,
 | Jefes siguientes | Guangzhi y Tiger Vanguard | Probar sus ataques, cambios de estado, HUD y limpieza por separado. Habilitar solo en zonas autorizadas para cada uno. |
 | Investigación | Whiteclad Noble, Yellow Wind Sage y Erlang | Evaluar dependencias de fases, terreno y guiones de arena. Publicarlos únicamente si funcionan como encuentros independientes. |
 
-- Mostrar el `@usuario` sobre la criatura visible. Usar el nombre visible como respaldo y respetar el anonimato del live.
-- Comenzar con un enemigo activo y 30 s de duración. Para el jefe piloto, usar un enfriamiento inicial de 180 s y bloquearlo con Modo sin morir. Confirmar que el enemigo entre en combate antes del anuncio.
-- Al expirar, pausar, morir, viajar o desconectar, retirar solo actores y proyectiles de Cloud90. Confirmar que derrotarlos no afecte al diario, recompensas, progreso ni banderas de la historia.
+### Invocaciones por regalo
+
+1. **Backend.** Agregar `ambush` al catálogo experimental de Wukong con una opción por enemigo verificado. Reutilizar el tratamiento de regalos de emboscada de RDR2. Cada regalo válido genera una orden independiente con ID, enemigo, remitente, caducidad y contexto de partida. El enfriamiento de la regla de regalo se aplica por espectador al integrar el cambio de backend #124. Proponer 0 s por efecto para enemigos normales. La espera general, la cola y el máximo por minuto siguen siendo configurables. Respetar Modo troll, Modo sin morir y el escudo.
+2. **Game Link.** Entregar cada orden por el buzón existente. El plugin anuncia la capacidad cuando el módulo y la zona son compatibles. El backend ofrece las opciones compatibles con el cliente. Mostrar el motivo concreto cuando falten el cargador, la versión compatible o un punto de aparición.
+3. **Plugin.** Una orden crea un enemigo en un punto elegido al azar entre candidatos transitables, con suelo estable y espacio libre. Mantener distancia del Destinado y de otros enemigos recién invocados. Bloquear invocaciones en santuarios, cinemáticas, transformaciones, cargas, viajes y arenas activas. Probar creación, IA y combate por cada clase.
+4. **Enemigos simultáneos.** Mantener un registro por ID con actor, espectador y recursos creados. Dos regalos pueden activar enemigos distintos en el mismo combate. No usar un bloqueo de enemigo único ni un tope fijo de enemigos normales. Si el motor no puede crear el actor o no hay posición válida, devolver el motivo de ese intento. Confirmar el combate por ID antes del anuncio y deduplicar reenvíos.
+5. **Etiquetas y limpieza.** Mostrar el `@usuario` cerca del enemigo visible, con el nombre visible como respaldo y respetando el anonimato. Al morir el enemigo, ocultar la etiqueta y dejar que termine la caída antes de retirar el cuerpo. Adoptar 5 s como punto de partida. Limpiar actores, etiquetas, temporizadores y proyectiles propios al pausar, morir, viajar, cambiar de zona o perder la conexión. Comprobar en una partida secundaria que las bajas no alteren recompensas, diario, encuentros originales ni progreso.
+
+### Jefes
+
+- Empezar con Wandering Wight como prueba aparte. Habilitarlo solo en espacios registrados como compatibles y después de verificar fases, colisiones, HUD y limpieza. Probar un jefe activo por zona y 180 s de enfriamiento inicial para esta modalidad. Exigir permiso y desactivar Modo sin morir.
 - Considerar un efecto separado de revancha para jefes dependientes de su arena. Investigar el modo Desafío oficial y sus desbloqueos antes de conectarlo a regalos. [Anuncios de Game Science en Steam](https://steamcommunity.com/app/2358720/allnews/)
+
+### Validación y publicación
+
+1. Probar primero Wolf Scout. Enviar dos regalos desde cuentas distintas antes de recibir la primera confirmación. Verificar dos enemigos, dos etiquetas y dos resultados. Repetir con el mismo ID y comprobar que produce una sola invocación.
+2. Probar una ráfaga de regalos, varios enemigos activos y limpieza al pausar o cambiar de zona. Medir el rendimiento y registrar qué órdenes se aplicaron, cuáles se rechazaron y por qué. Verificar que el guardado y el combate original sobrevivan a la prueba.
+3. Añadir Wolf Archer tras verificar sus proyectiles. Evaluar Crow Diviner y luego los jefes. Activar solo los candidatos que pasen en el build de Steam registrado.
+4. Publicar el instalador con el plugin actualizado y desplegar el catálogo compatible. Verificar de extremo a extremo el selector, el regalo, la invocación y la confirmación en Cloud90 Live.
 
 ## Entrega
 

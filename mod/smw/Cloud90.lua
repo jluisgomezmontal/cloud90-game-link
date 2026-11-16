@@ -40,14 +40,20 @@ end
 local function set_clock(t)
     w(0xf31,math.floor(t/100)); w(0xf32,math.floor(t/10)%10); w(0xf33,t%10)
 end
-local function source_enemy()
+local function source_enemy(randomize)
     if not land() then return nil end
     local camera = r16(0x1a)
+    local chosen, count = nil, 0
     for s=0,9 do
         local x=r(0xe4+s)+256*r(0x14e0+s)
         if r(0x14c8+s)==8 and enemy_types[r(0x9e+s)] and r(0x15a0+s)==0
-            and r(0x186c+s)==0 and x>=camera and x<camera+256 then return s end
+            and r(0x186c+s)==0 and x>=camera and x<camera+256 then
+            if not randomize then return s end
+            count=count+1
+            if math.random(count)==1 then chosen=s end
+        end
     end
+    return chosen
 end
 local function slots()
     local n=0
@@ -89,7 +95,7 @@ local sprite_fields={0x9e,0xaa,0xb6,0xc2,0x1504,0x1510,0x151c,0x1528,0x1534,
     0x1632,0x163e,0x164a,0x1656,0x1662,0x166e,0x167a,0x1686,0x186c,
     0x187b,0x190f,0x1fd6,0x1fe2}
 local function spawn(count)
-    local src=source_enemy()
+    local src=source_enemy(true)
     if not src or slots()<count then return 'sin enemigos compatibles o espacios libres' end
     local x=r(0xe4+src)+256*r(0x14e0+src)
     local y=r(0xd8+src)+256*r(0x14d4+src)
