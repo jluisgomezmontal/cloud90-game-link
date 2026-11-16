@@ -28,7 +28,7 @@ try {
     & $csc /nologo /target:library "/out:$dll" /r:System.Web.Extensions.dll /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Security.dll /r:System.Core.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll @jsonRefs @sources
     if ($LASTEXITCODE -ne 0) { throw 'csc failed' }
     $testAssembly = [Reflection.Assembly]::LoadFrom($dll)
-    $clientVersion = $testAssembly.GetType('Cloud90.GameLink.Link', $true).GetField('Version').GetRawConstantValue()
+    $clientVersion = $testAssembly.GetType('Cloud90.GameLink.Link', $true).GetField('ProtocolVersion').GetRawConstantValue()
     if ($JsonDll) {
         [Reflection.Assembly]::LoadFrom((Join-Path $work 'Newtonsoft.Json.dll')) | Out-Null
         $failed += [BridgeJsonTests]::Run()

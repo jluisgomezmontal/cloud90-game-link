@@ -77,8 +77,14 @@ constexpr UINT64 EquipOutfitPreset = 0x77FF8D35EEC6BBC4;
 constexpr UINT64 UpdatePedVariation = 0xCC8CA3E88256E58F;
 constexpr UINT64 RequestOutfit = 0x13154A76CE0CF9AB;
 constexpr UINT64 IsOutfitRequestValid = 0xB25E57FC8E37114D;
+constexpr UINT64 HasOutfitLoaded = 0x610438375E5D1801;
+constexpr UINT64 CreateOutfitPed = 0xEAF682A14F8E5F53;
 constexpr UINT64 ApplyOutfit = 0x74F512E29CB717E2;
 constexpr UINT64 ReleaseOutfit = 0x4592B8B9B0EF5F48;
+constexpr UINT64 GetPedOutfit = 0x30569F348D126A5A;
+constexpr UINT64 IsOutfitEquipped = 0x98082246107A6ACF;
+constexpr UINT64 IsPedReadyToRender = 0xA0BC8FAED8CFEB3C;
+constexpr UINT64 SetEntityVisible = 0x1794B4FCC84D812F;
 constexpr UINT64 GiveWeaponToPed = 0x5E3BDDBCB83F3D84;
 constexpr UINT64 TaskCombatPed = 0xF166E48407BAC484;
 constexpr UINT64 SetPedCanBeTargeted = 0x63F58F7C80513AAD;
@@ -289,6 +295,7 @@ struct EnemyOption {
     UINT32 weapon;
     int key;
     UINT32 outfit = 0;
+    int outfitPreset = -1;
 };
 
 constexpr std::array EnemyOptions{
@@ -298,7 +305,7 @@ constexpr std::array EnemyOptions{
     EnemyOption{"bear", GameHash("a_c_bear_01"), 0, VK_F4},
     EnemyOption{"vampire", GameHash("cs_vampire"), GameHash("weapon_melee_knife_vampire"), VK_F5},
     // The hidden Neanderthal is outfit 45 on the game's shared corpse model.
-    EnemyOption{"caveman", GameHash("a_m_m_unicorpse_01"), GameHash("weapon_melee_ancient_hatchet"), VK_F7, 0x2ACC5E3E},
+    EnemyOption{"caveman", GameHash("a_m_m_unicorpse_01"), GameHash("weapon_melee_ancient_hatchet"), VK_F7, 0x2ACC5E3E, 45},
     EnemyOption{"colm", GameHash("cs_colmodriscoll"), GameHash("weapon_repeater_carbine"), VK_F8},
     EnemyOption{"milton", GameHash("cs_miltonandrews"), GameHash("weapon_rifle_boltaction"), VK_F9},
     EnemyOption{"cave_hermit", GameHash("cs_cavehermit"), GameHash("weapon_melee_knife"), VK_F10},
@@ -314,6 +321,13 @@ constexpr std::array EnemyOptions{
     EnemyOption{"bull", GameHash("a_c_bull_01"), 0, VK_NUMPAD7},
     EnemyOption{"legendary_boar", GameHash("a_c_boarlegendary_01"), 0, VK_NUMPAD8},
     EnemyOption{"tatanka_bison", GameHash("a_c_buffalo_tatanka_01"), 0, VK_NUMPAD9},
+    // Model and outfit pairs from the corresponding Story Mode hunting scripts.
+    EnemyOption{"legendary_grizzly", GameHash("a_c_bear_01"), 0, VK_F13, GameHash("bear_legendary")},
+    EnemyOption{"legendary_bullgator", GameHash("a_c_alligator_02"), 0, VK_F14},
+    EnemyOption{"legendary_cougar", GameHash("a_c_cougar_01"), 0, VK_F15, GameHash("cougar_legendary")},
+    EnemyOption{"legendary_wolf", GameHash("a_c_wolf"), 0, VK_F16, GameHash("meta_outfit_animal_legendary_wolf")},
+    EnemyOption{"legendary_giaguaro", GameHash("a_c_panther_01"), 0, VK_F17, GameHash("panther_legendary")},
+    EnemyOption{"legendary_white_bison", GameHash("a_c_buffalo_01"), 0, VK_F18, GameHash("discoverables_white_buffalo")},
 };
 static_assert(EnemyOptions[0].model == 0x19486791);
 static_assert(EnemyOptions[1].model == 0x1973FE45);
@@ -437,8 +451,10 @@ struct Ambush {
     ULONGLONG combatCheckAt = 0;
     ULONGLONG unavailableSince = 0;
     ULONGLONG removeBodyAt = 0;
-    ULONGLONG outfitCheckAt = 0;
+    ULONGLONG outfitLoadUntil = 0;
+    ULONGLONG outfitVerifyUntil = 0;
     int outfitRequest = -1;
+    bool usedOutfitPreset = false;
     bool cleanup = false;
     bool reportedCombat = false;
     std::string viewer, commandId;
@@ -451,11 +467,6 @@ struct Ambush {
         if (!ReadNative(IsModelValid, selected.model) || !ReadNative(IsModelAPed, selected.model)) {
             return "model_unavailable";
         }
-        if (selected.outfit) {
-            outfitRequest = ReadNative(RequestOutfit, selected.model, selected.outfit);
-            if (outfitRequest < 0) return "no se pudo solicitar el atuendo del cavernícola";
-            outfitCheckAt = now + 200;
-        }
         option = &selected;
         viewer = ViewerLabel(sender);
         cleanup = false;
@@ -464,6 +475,18 @@ struct Ambush {
         unavailableSince = 0;
         CallNative(RequestModel, option->model, 0);
         return "loading_model";
+    }
+
+    void BeginCombat(ULONGLONG now) {
+        if (option->weapon) {
+            CallNative(SetPedCanBeTargeted, enemy, 1);
+            CallNative(BlockAmbientPedEvents, enemy, 1);
+            CallNative(GiveWeaponToPed, enemy, option->weapon, 30, 1, 0, 0, 0, 0.0f, 0.0f,
+                       GameHash("add_reason_default"), 1, 0.0f, 0);
+        }
+        CallNative(TaskCombatPed, enemy, target, 0, 16);
+        combatCheckAt = now + 3000;
+        reportedCombat = false;
     }
 
     bool OwnsEnemy() const {
@@ -483,7 +506,7 @@ struct Ambush {
         constexpr UINT64 TextCenter = 0xBE5261939FBECB8C;
         constexpr UINT64 DrawText = 0x16794E044C9EFB58;
         constexpr int HeadBone = 21030;
-        if (!option || !enemy || viewer.empty() || cleanup ||
+        if (!option || !enemy || outfitVerifyUntil || viewer.empty() || cleanup ||
             sample.context != FreeRoam || sample.ped != target || !OwnsEnemy() ||
             ReadNative(IsEntityDead, enemy) || !ReadNative(IsOnScreen, enemy) ||
             !ReadNative(ClearLineOfSight, target, enemy, 17)) return;
@@ -527,7 +550,8 @@ struct Ambush {
             else if (!unavailableSince) unavailableSince = now;
             const bool dead = ReadNative(IsEntityDead, enemy) != 0;
             if (dead && !removeBodyAt) removeBodyAt = now + 5000;
-            if (cleanup || (sample.ped && sample.ped != target) || sample.context == "dead" ||
+            if (cleanup || (outfitVerifyUntil && (shielded || sample.context != FreeRoam)) ||
+                (sample.ped && sample.ped != target) || sample.context == "dead" ||
                 sample.context == "story_mission" || !ReadNative(DoesEntityExist, target) ||
                 ReadNative(IsEntityDead, target) || (removeBodyAt && now >= removeBodyAt) ||
                 (unavailableSince && now - unavailableSince >= 15000)) {
@@ -540,6 +564,26 @@ struct Ambush {
                 return "entity_removed";
             }
             if (dead) return nullptr;
+            if (outfitVerifyUntil) {
+                if ((static_cast<UINT32>(ReadNative(GetPedOutfit, enemy)) == option->outfit ||
+                     ReadNative(IsOutfitEquipped, enemy, option->outfit)) &&
+                    ReadNative(IsPedReadyToRender, enemy)) {
+                    outfitVerifyUntil = 0;
+                    CallNative(SetEntityVisible, enemy, 1);
+                    BeginCombat(now);
+                    return "spawned";
+                }
+                if (now >= outfitVerifyUntil) {
+                    if (!usedOutfitPreset && option->outfitPreset >= 0) {
+                        ApplyPreset(now);
+                        return nullptr;
+                    }
+                    cleanup = true;
+                    return option->outfitPreset >= 0 ? "el juego no confirmó el atuendo 45 del neandertal" :
+                        "el juego no confirmó el atuendo legendario";
+                }
+                return nullptr;
+            }
             if (!reportedCombat) {
                 const bool inCombat = ReadNative(IsPedInCombat, enemy, target) != 0;
                 if (inCombat || now >= combatCheckAt) {
@@ -558,31 +602,46 @@ struct Ambush {
             CallNative(RequestModel, option->model, 0);
             return nullptr;
         }
-        if (!failure && outfitRequest >= 0 &&
-            (now < outfitCheckAt || !ReadNative(IsOutfitRequestValid, outfitRequest))) return nullptr;
+        bool outfitLoaded = false;
+        const bool spawnWithOutfit = option->outfit && option->outfitPreset < 0;
+        if (!failure && option->outfit) {
+            if (!outfitLoadUntil) {
+                outfitRequest = ReadNative(RequestOutfit, option->model, option->outfit);
+                outfitLoadUntil = now + (spawnWithOutfit ? 2000 : 750);
+            }
+            if (outfitRequest >= 0 && ReadNative(IsOutfitRequestValid, outfitRequest)) {
+                outfitLoaded = ReadNative(HasOutfitLoaded, outfitRequest) != 0;
+                if (!outfitLoaded && now < outfitLoadUntil) return nullptr;
+            }
+            if (spawnWithOutfit && !outfitLoaded) failure = "atuendo legendario no disponible";
+        }
 
         if (!failure) {
             NativeVector position{};
             failure = FindEnemyPosition(target, position, occupied);
             if (!failure) {
-                enemy = ReadNative(CreatePed, option->model, position.x, position.y, position.z, 0.0f, 0, 1, 0, 0);
+                if (spawnWithOutfit)
+                    enemy = ReadNative(CreateOutfitPed, outfitRequest, position.x, position.y, position.z,
+                                       0.0f, 1, 1, 0, 0);
+                else
+                    enemy = ReadNative(CreatePed, option->model, position.x, position.y, position.z,
+                                       0.0f, 0, 1, 0, 0);
                 if (!enemy || !ReadNative(DoesEntityExist, enemy)) failure = "spawn_failed";
             }
         }
+        if (!failure && option->outfit) {
+            CallNative(SetEntityVisible, enemy, 0);
+            if (spawnWithOutfit || (outfitLoaded && ReadNative(ApplyOutfit, outfitRequest, enemy, 1, 0))) {
+                CallNative(UpdatePedVariation, enemy, 0, 1, 1, 1, 0);
+                outfitVerifyUntil = now + 1000;
+            } else ApplyPreset(now);
+        }
         if (outfitRequest >= 0) {
-            if (!failure && !ReadNative(ApplyOutfit, outfitRequest, enemy, 1, 0)) {
-                cleanup = true;
-                failure = "no se pudo aplicar el atuendo del cavernícola";
-            }
             CallNative(ReleaseOutfit, outfitRequest);
             outfitRequest = -1;
         }
         CallNative(ReleaseModel, option->model);
         if (failure) {
-            if (cleanup && enemy) {
-                CallNative(SetMissionEntity, enemy, 1, 0);
-                return failure;
-            }
             option = nullptr;
             enemy = 0;
             cleanup = false;
@@ -590,22 +649,21 @@ struct Ambush {
         }
 
         CallNative(SetMissionEntity, enemy, 1, 0);
-        if (option->outfit) CallNative(UpdatePedVariation, enemy, 0, 1, 1, 1, 0);
-        else CallNative(EquipOutfitPreset, enemy, 0, 0);
+        if (!option->outfit) CallNative(EquipOutfitPreset, enemy, 0, 0);
         if (ReadNative(IsEntityInWater, enemy)) {
             cleanup = true;
             return "unsafe_spawn";
         }
-        if (option->weapon) {
-            CallNative(SetPedCanBeTargeted, enemy, 1);
-            CallNative(BlockAmbientPedEvents, enemy, 1);
-            CallNative(GiveWeaponToPed, enemy, option->weapon, 30, 1, 0, 0, 0, 0.0f, 0.0f,
-                       GameHash("add_reason_default"), 1, 0.0f, 0);
-        }
-        CallNative(TaskCombatPed, enemy, target, 0, 16);
-        combatCheckAt = now + 3000;
-        reportedCombat = false;
+        if (outfitVerifyUntil) return nullptr;
+        BeginCombat(now);
         return "spawned";
+    }
+
+    void ApplyPreset(ULONGLONG now) {
+        CallNative(EquipOutfitPreset, enemy, option->outfitPreset, 0);
+        CallNative(UpdatePedVariation, enemy, 0, 1, 1, 1, 0);
+        usedOutfitPreset = true;
+        outfitVerifyUntil = now + 1500;
     }
 };
 
@@ -800,7 +858,7 @@ public:
             if (paused && (!ambush.enemy || fresh || now - inboxMissingSince >= 15000))
                 ambush.cleanup = true;
             if (!ambush.commandId.empty() && now >= ambush.expires) {
-                if (!ambush.enemy) ambush.cleanup = true;
+                if (!ambush.enemy || ambush.outfitVerifyUntil) ambush.cleanup = true;
                 Ack(ambush.commandId, ambush.enemy ? "resultado incierto; combate sin confirmar" : "caducado");
                 ambush.commandId.clear();
             }
@@ -833,7 +891,7 @@ public:
             }
             capabilities.push_back("bandit_ambush");
         }
-        WriteStatus({{"session", session}, {"bridgeVersion", "cloud90-rdr2-4"},
+        WriteStatus({{"session", session}, {"bridgeVersion", "cloud90-rdr2-5"},
                      {"pid", GetCurrentProcessId()}, {"heartbeatMs", now}, {"epoch", epoch},
                      {"inPlay", playing}, {"capabilities", capabilities}, {"acks", acks}});
     }

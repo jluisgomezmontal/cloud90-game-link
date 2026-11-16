@@ -87,6 +87,14 @@ Con los mismos dos archivos de activación, usa estos atajos en exploración lib
 | Ctrl + Shift + Num 7 | Toro | `a_c_bull_01` |
 | Ctrl + Shift + Num 8 | Jabalí legendario | `a_c_boarlegendary_01` |
 | Ctrl + Shift + Num 9 | Bisonte legendario Tatanka | `a_c_buffalo_tatanka_01` |
+| Ctrl + Shift + F13 | Oso grizzly legendario Bharati | `a_c_bear_01`, `bear_legendary` |
+| Ctrl + Shift + F14 | Caimán legendario Bullgator | `a_c_alligator_02` |
+| Ctrl + Shift + F15 | Puma legendario | `a_c_cougar_01`, `cougar_legendary` |
+| Ctrl + Shift + F16 | Lobo legendario | `a_c_wolf`, `meta_outfit_animal_legendary_wolf` |
+| Ctrl + Shift + F17 | Pantera legendaria Giaguaro | `a_c_panther_01`, `panther_legendary` |
+| Ctrl + Shift + F18 | Bisonte blanco legendario | `a_c_buffalo_01`, `discoverables_white_buffalo` |
+
+Los atuendos legendarios se cargan antes de crear al animal. La invocación usa las variantes de los [scripts de caza de Historia](https://github.com/pyouneetm/RDR2-Decompiled-Scripts/tree/master/script_rel). Verifica el aspecto y el combate en exploración libre.
 
 El caimán usa la misma búsqueda de suelo seco que los demás enemigos. Los modelos nuevos deben probarse dentro del juego para confirmar su comportamiento en combate.
 

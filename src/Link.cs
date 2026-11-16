@@ -15,7 +15,9 @@ namespace Cloud90.GameLink
 {
     internal sealed class Link
     {
-        public const string Version = "cloud90-game-link-1.8.3";
+        public const string Version = "cloud90-game-link-1.8.7";
+        // Keep the wire version accepted by the backend across installer releases.
+        public const string ProtocolVersion = "cloud90-game-link-1.8.0-dev";
         // "hades", "kof2002": the token and the hello are this game's.
         public readonly string Game;
         readonly string title;
@@ -161,7 +163,7 @@ namespace Cloud90.GameLink
                         socket = ws;
                     }
                     connectedAt = DateTime.UtcNow;
-                    await Send(new Dictionary<string, object> { { "type", "hello" }, { "game", Game }, { "version", Game == "wukong" ? "cloud90-game-link-wukong-1" : Game == "blasphemous" ? "cloud90-game-link-blasphemous-2" : Game == "celeste" ? "cloud90-game-link-celeste-2" : Game == "rdr2" ? "cloud90-game-link-rdr2-4" : Version } });
+                    await Send(new Dictionary<string, object> { { "type", "hello" }, { "game", Game }, { "version", Game == "wukong" ? "cloud90-game-link-wukong-1" : Game == "blasphemous" ? "cloud90-game-link-blasphemous-2" : Game == "celeste" ? "cloud90-game-link-celeste-2" : Game == "rdr2" ? "cloud90-game-link-rdr2-5" : ProtocolVersion } });
                     pinger = Ping(ws, connection.Token);
                     await Receive(ws, connection.Token);
                     if (ws.CloseStatus.HasValue && ws.CloseStatus.Value != WebSocketCloseStatus.Empty)
