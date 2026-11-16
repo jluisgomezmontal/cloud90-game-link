@@ -163,7 +163,7 @@ namespace Cloud90.GameLink
                         socket = ws;
                     }
                     connectedAt = DateTime.UtcNow;
-                    await Send(new Dictionary<string, object> { { "type", "hello" }, { "game", Game }, { "version", Game == "wukong" ? "cloud90-game-link-wukong-1" : Game == "blasphemous" ? "cloud90-game-link-blasphemous-2" : Game == "celeste" ? "cloud90-game-link-celeste-2" : Game == "rdr2" ? "cloud90-game-link-rdr2-4" : ProtocolVersion } });
+                    await Send(new Dictionary<string, object> { { "type", "hello" }, { "game", Game }, { "version", Game == "wukong" ? "cloud90-game-link-wukong-1" : Game == "blasphemous" ? "cloud90-game-link-blasphemous-2" : Game == "celeste" ? "cloud90-game-link-celeste-2" : Game == "rdr2" ? "cloud90-game-link-rdr2-5" : ProtocolVersion } });
                     pinger = Ping(ws, connection.Token);
                     await Receive(ws, connection.Token);
                     if (ws.CloseStatus.HasValue && ws.CloseStatus.Value != WebSocketCloseStatus.Empty)

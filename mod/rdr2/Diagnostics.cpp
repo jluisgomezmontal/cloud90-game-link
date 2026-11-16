@@ -78,6 +78,7 @@ constexpr UINT64 UpdatePedVariation = 0xCC8CA3E88256E58F;
 constexpr UINT64 RequestOutfit = 0x13154A76CE0CF9AB;
 constexpr UINT64 IsOutfitRequestValid = 0xB25E57FC8E37114D;
 constexpr UINT64 HasOutfitLoaded = 0x610438375E5D1801;
+constexpr UINT64 CreateOutfitPed = 0xEAF682A14F8E5F53;
 constexpr UINT64 ApplyOutfit = 0x74F512E29CB717E2;
 constexpr UINT64 ReleaseOutfit = 0x4592B8B9B0EF5F48;
 constexpr UINT64 GetPedOutfit = 0x30569F348D126A5A;
@@ -294,7 +295,7 @@ struct EnemyOption {
     UINT32 weapon;
     int key;
     UINT32 outfit = 0;
-    int outfitPreset = 0;
+    int outfitPreset = -1;
 };
 
 constexpr std::array EnemyOptions{
@@ -320,6 +321,13 @@ constexpr std::array EnemyOptions{
     EnemyOption{"bull", GameHash("a_c_bull_01"), 0, VK_NUMPAD7},
     EnemyOption{"legendary_boar", GameHash("a_c_boarlegendary_01"), 0, VK_NUMPAD8},
     EnemyOption{"tatanka_bison", GameHash("a_c_buffalo_tatanka_01"), 0, VK_NUMPAD9},
+    // Model and outfit pairs from the corresponding Story Mode hunting scripts.
+    EnemyOption{"legendary_grizzly", GameHash("a_c_bear_01"), 0, VK_F13, GameHash("bear_legendary")},
+    EnemyOption{"legendary_bullgator", GameHash("a_c_alligator_02"), 0, VK_F14},
+    EnemyOption{"legendary_cougar", GameHash("a_c_cougar_01"), 0, VK_F15, GameHash("cougar_legendary")},
+    EnemyOption{"legendary_wolf", GameHash("a_c_wolf"), 0, VK_F16, GameHash("meta_outfit_animal_legendary_wolf")},
+    EnemyOption{"legendary_giaguaro", GameHash("a_c_panther_01"), 0, VK_F17, GameHash("panther_legendary")},
+    EnemyOption{"legendary_white_bison", GameHash("a_c_buffalo_01"), 0, VK_F18, GameHash("discoverables_white_buffalo")},
 };
 static_assert(EnemyOptions[0].model == 0x19486791);
 static_assert(EnemyOptions[1].model == 0x1973FE45);
@@ -566,12 +574,13 @@ struct Ambush {
                     return "spawned";
                 }
                 if (now >= outfitVerifyUntil) {
-                    if (!usedOutfitPreset) {
+                    if (!usedOutfitPreset && option->outfitPreset >= 0) {
                         ApplyPreset(now);
                         return nullptr;
                     }
                     cleanup = true;
-                    return "el juego no confirmó el atuendo 45 del neandertal";
+                    return option->outfitPreset >= 0 ? "el juego no confirmó el atuendo 45 del neandertal" :
+                        "el juego no confirmó el atuendo legendario";
                 }
                 return nullptr;
             }
@@ -594,28 +603,35 @@ struct Ambush {
             return nullptr;
         }
         bool outfitLoaded = false;
+        const bool spawnWithOutfit = option->outfit && option->outfitPreset < 0;
         if (!failure && option->outfit) {
             if (!outfitLoadUntil) {
                 outfitRequest = ReadNative(RequestOutfit, option->model, option->outfit);
-                outfitLoadUntil = now + 750;
+                outfitLoadUntil = now + (spawnWithOutfit ? 2000 : 750);
             }
             if (outfitRequest >= 0 && ReadNative(IsOutfitRequestValid, outfitRequest)) {
                 outfitLoaded = ReadNative(HasOutfitLoaded, outfitRequest) != 0;
                 if (!outfitLoaded && now < outfitLoadUntil) return nullptr;
             }
+            if (spawnWithOutfit && !outfitLoaded) failure = "atuendo legendario no disponible";
         }
 
         if (!failure) {
             NativeVector position{};
             failure = FindEnemyPosition(target, position, occupied);
             if (!failure) {
-                enemy = ReadNative(CreatePed, option->model, position.x, position.y, position.z, 0.0f, 0, 1, 0, 0);
+                if (spawnWithOutfit)
+                    enemy = ReadNative(CreateOutfitPed, outfitRequest, position.x, position.y, position.z,
+                                       0.0f, 1, 1, 0, 0);
+                else
+                    enemy = ReadNative(CreatePed, option->model, position.x, position.y, position.z,
+                                       0.0f, 0, 1, 0, 0);
                 if (!enemy || !ReadNative(DoesEntityExist, enemy)) failure = "spawn_failed";
             }
         }
         if (!failure && option->outfit) {
             CallNative(SetEntityVisible, enemy, 0);
-            if (outfitLoaded && ReadNative(ApplyOutfit, outfitRequest, enemy, 1, 0)) {
+            if (spawnWithOutfit || (outfitLoaded && ReadNative(ApplyOutfit, outfitRequest, enemy, 1, 0))) {
                 CallNative(UpdatePedVariation, enemy, 0, 1, 1, 1, 0);
                 outfitVerifyUntil = now + 1000;
             } else ApplyPreset(now);
@@ -875,7 +891,7 @@ public:
             }
             capabilities.push_back("bandit_ambush");
         }
-        WriteStatus({{"session", session}, {"bridgeVersion", "cloud90-rdr2-4"},
+        WriteStatus({{"session", session}, {"bridgeVersion", "cloud90-rdr2-5"},
                      {"pid", GetCurrentProcessId()}, {"heartbeatMs", now}, {"epoch", epoch},
                      {"inPlay", playing}, {"capabilities", capabilities}, {"acks", acks}});
     }
