@@ -525,7 +525,7 @@ struct Ambush {
         const auto text = reinterpret_cast<const char*>(*CallNative(MakeText, 10, "LITERAL_STRING", viewer.c_str()));
         if (!text) return;
         CallNative(TextCenter, 1);
-        CallNative(TextScale, 0.3f, 0.3f);
+        CallNative(TextScale, 0.45f, 0.45f);
         CallNative(TextColor, 255, 255, 255, 255);
         CallNative(DrawText, text, x, y - 0.02f);
         CallNative(TextCenter, 0);
