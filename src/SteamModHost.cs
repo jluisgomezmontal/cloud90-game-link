@@ -20,6 +20,7 @@ namespace Cloud90.GameLink
         protected abstract string BridgeVersion { get; }
         protected abstract void SetFolder(Settings settings, string path);
         protected virtual string PluginFolder(string root) { return root; }
+        protected virtual bool AcceptStatus(Dictionary<string, object> status) { return true; }
         protected virtual bool ReportsPause { get { return false; } }
         string OwnedHash { get { return "cloud90-" + Id + "-owned.txt"; } }
         string DataRoot { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Cloud90GameLink", Id); } }
@@ -215,6 +216,7 @@ namespace Cloud90.GameLink
             if ((string)status["session"] != session || !SessionId.IsMatch(session) ||
                 (string)status["bridgeVersion"] != BridgeVersion || Convert.ToInt32(status["pid"]) != pid ||
                 !epoch.StartsWith(session + "_", StringComparison.Ordinal) || now < beat || now - beat > 2000) return false;
+            if (!AcceptStatus(status)) return false;
             bool active = (bool)status["inPlay"];
             var capabilities = new List<string>();
             foreach (object effect in (System.Collections.IEnumerable)status["capabilities"])

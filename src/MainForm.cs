@@ -452,6 +452,11 @@ namespace Cloud90.GameLink
                 Array.Resize(ref panels, panels.Length + 1);
                 panels[panels.Length - 1] = new GamePanel(this, new WukongHost());
             }
+            if (Tlou2Host.Packaged)
+            {
+                Array.Resize(ref panels, panels.Length + 1);
+                panels[panels.Length - 1] = new GamePanel(this, new Tlou2Host());
+            }
             navigation = new GameNavigationButton[panels.Length];
             for (int i = 0; i < panels.Length; i++)
             {
