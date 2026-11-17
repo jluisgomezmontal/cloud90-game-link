@@ -84,6 +84,22 @@ void Publish(const fs::path& root, const std::string& session, const std::string
     DeleteFileW(temporary.c_str());
 }
 
+void RecordLoad(const fs::path& root, const std::string& hash, bool alternateExecutable) {
+    fs::create_directories(root);
+    const auto pid = GetCurrentProcessId();
+    const auto destination = root / (L"probe-" + std::to_wstring(pid) + L".json");
+    const auto temporary = root / (L"probe-" + std::to_wstring(pid) + L".tmp");
+    std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
+    if (!output) return;
+
+    output << "{\"pid\":" << pid << ",\"executable\":\""
+           << (alternateExecutable ? "tlou-ii-l.exe" : "tlou-ii.exe")
+           << "\",\"gameSha256\":\"" << hash << "\"}";
+    output.close();
+    if (!output || !MoveFileExW(temporary.c_str(), destination.c_str(), MOVEFILE_REPLACE_EXISTING))
+        DeleteFileW(temporary.c_str());
+}
+
 DWORD WINAPI RunProbe(void*) {
     try {
         std::wstring executable(32768, L'\0');
@@ -92,7 +108,9 @@ DWORD WINAPI RunProbe(void*) {
         if (!length || length >= executable.size()) return 0;
         executable.resize(length);
         const fs::path path(executable);
-        if (_wcsicmp(path.filename().c_str(), L"tlou-ii.exe") != 0) return 0;
+        const auto filename = path.filename();
+        const bool alternateExecutable = _wcsicmp(filename.c_str(), L"tlou-ii-l.exe") == 0;
+        if (!alternateExecutable && _wcsicmp(filename.c_str(), L"tlou-ii.exe") != 0) return 0;
 
         std::wstring localData(32768, L'\0');
         const auto dataLength = GetEnvironmentVariableW(L"LOCALAPPDATA", localData.data(),
@@ -103,6 +121,9 @@ DWORD WINAPI RunProbe(void*) {
         const auto hash = ExecutableHash(path);
         if (hash.empty()) return 0;
         const auto root = fs::path(localData) / L"Cloud90GameLink" / L"tlou2";
+        RecordLoad(root, hash, alternateExecutable);
+        if (alternateExecutable) return 0;
+
         for (;;) {
             const auto session = ReadSession(root);
             if (!session.empty()) Publish(root, session, hash);

@@ -12,6 +12,12 @@ The installed ASI exposes no PE exports. The core DLL exports only `NpcSpawnerBu
 
 Run `mod/tlou2/build.ps1` from the repository root. The result is `dist/tlou2-native/Cloud90.Tlou2.asi`. The currently installed game uses a `winmm.dll` ASI loader. Use the existing loader and retain its files. The probe checks for `tlou-ii.exe`, publishes a heartbeat only for an active local session and advertises zero effects. The hash passed to the preview builder must match the executable, including when testing diagnostics.
 
+## Check loading in the actual campaign
+
+Close the game, copy the built ASI next to the two game executables and start the campaign normally. Leave the existing loader and mods in place. The probe records its load in `%LOCALAPPDATA%\Cloud90GameLink\tlou2\probe-<pid>.json`, including the exact executable name and its SHA-256. Match the report to the process that remains active in campaign. Both executable names are recognized for this check. Only `tlou-ii.exe` publishes the existing Game Link session heartbeat. This standalone check works without starting Game Link or setting a token. Remove the diagnostic ASI with the game closed if retiring the test.
+
+NdGameSdk revision `6082fbb` includes T2R level-state access and a generic engine script-call implementation. Source inspection did not establish a working API for creating, querying and removing an NPC. The compatibility of its runtime with the campaign executable remains untested.
+
 ## Verifying an adapter
 
 1. Confirm the executable path, SHA-256 and which process owns the Steam game session. This host targets `tlou-ii.exe`. Verify loader compatibility separately and document where the loader expects the adapter ASI. Game Link writes only `Cloud90.Tlou2.asi` next to the executable and its ownership manifest.
