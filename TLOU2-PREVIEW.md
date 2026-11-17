@@ -1,6 +1,6 @@
 # TLOU2 preview integration
 
-The Game Link host and the Cloud90 Live preview catalog are wired to an adapter contract. No game-side adapter, native offsets, spawn functions, or supported game hash has been verified. The normal client omits the TLOU2 tab. The backend omits the catalog unless `CLOUD90_TLOU2_EXPERIMENTAL=1`.
+The Game Link host and the Cloud90 Live preview catalog are wired to an adapter contract. A native ASI probe can report its process, executable hash and heartbeat to the host. The probe reports an inactive session with no supported effects. Native spawn and cleanup functions still need verification in the game. The normal client omits the TLOU2 tab. The backend omits the catalog unless `CLOUD90_TLOU2_EXPERIMENTAL=1`.
 
 ## Manual spawner check
 
@@ -8,10 +8,14 @@ On 2026-11-17 the user reported that CalcioElite's Spawner worked in campaign mo
 
 The installed ASI exposes no PE exports. The core DLL exports only `NpcSpawnerBuildMarker`. The public mod page describes menu controls and does not document a spawn API. A Game Link adapter still needs a supported way to request a spawn and receive the result, plus a way to detect encounter transitions and remove the NPC it created.
 
+## Build the native probe
+
+Run `mod/tlou2/build.ps1` from the repository root. The result is `dist/tlou2-native/Cloud90.Tlou2.asi`. The currently installed game uses a `winmm.dll` ASI loader. Use the existing loader and retain its files. The probe checks for `tlou-ii.exe`, publishes a heartbeat only for an active local session and advertises zero effects. The hash passed to the preview builder must match the executable, including when testing diagnostics.
+
 ## Verifying an adapter
 
-1. Confirm the executable path, SHA-256 and which process owns the Steam game session. This host targets `tlou-ii.exe`. Verify loader compatibility separately and document where the loader expects the adapter DLL. Game Link writes only `Cloud90.Tlou2.dll` next to the executable and its ownership manifest.
-2. Build the adapter for the verified executable and package it with `build-gow-preview.ps1 -BaseExecutable <complete-client> -Tlou2Adapter <adapter.dll> -Tlou2GameSha256 <sha256>`. The output is `dist/Cloud90GameLink-Tlou2Preview.exe`.
+1. Confirm the executable path, SHA-256 and which process owns the Steam game session. This host targets `tlou-ii.exe`. Verify loader compatibility separately and document where the loader expects the adapter ASI. Game Link writes only `Cloud90.Tlou2.asi` next to the executable and its ownership manifest.
+2. Build the adapter for the verified executable and package it with `build-gow-preview.ps1 -BaseExecutable <complete-client> -Tlou2Adapter <adapter.asi> -Tlou2GameSha256 <sha256>`. The output is `dist/Cloud90GameLink-Tlou2Preview.exe`.
 3. Use the SteamModHost file protocol. In `%LOCALAPPDATA%\Cloud90GameLink\tlou2`, read the active session from `active-session.txt` and poll that session directory's `inbox.json`. Publish `status.json` atomically. Follow `src/Hades.cs` for the inbox schema and `src/SteamModHost.cs` for status and ACK fields.
 4. In each status include the game PID, `bridgeVersion: "cloud90-tlou2-1"`, actual `gameSha256`, `mode: "campaign"` during campaign or `mode: "no_return"` during No Return, a GetTickCount64-based heartbeat, the session and a session-prefixed encounter epoch. Only advertise capabilities proven in the live scene. Publish `inPlay: false` across pauses, loads, cutscenes, deaths and encounter transitions.
 5. Implement `spawn_runner`, `heal` and `shield` on the game thread. Validate pause, connectivity, epoch, expiry, duplicate IDs and protection policy at execution. Limit the preview to one spawn per action, two owned live NPCs and 30 seconds between spawns. Track only owned NPCs, clean them up on transition or disconnect, and distinguish entity creation from confirmation of combat in diagnostics. ACK success only after the effect is confirmed. Read back health after applying bounded healing. Allow shield to block only new Cloud90 sabotage.

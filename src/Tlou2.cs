@@ -7,7 +7,7 @@ namespace Cloud90.GameLink
 {
     internal sealed class Tlou2Host : SteamModHost
     {
-        const string Package = "Cloud90.Tlou2.dll";
+        const string Package = "Cloud90.Tlou2.asi";
         internal const string BuildHashResource = "Cloud90.Tlou2.GameSha256";
         string executableHash;
 
@@ -46,13 +46,20 @@ namespace Cloud90.GameLink
             return base.Prepare(settings);
         }
 
+        protected override string InactiveStatus(Dictionary<string, object> status)
+        {
+            return (status["mode"] as string) == "unknown"
+                ? "Adaptador de diagnóstico cargado. Invocación pendiente."
+                : base.InactiveStatus(status);
+        }
+
         protected override bool AcceptStatus(Dictionary<string, object> status)
         {
             object hash, mode;
             return status.TryGetValue("gameSha256", out hash)
                 && string.Equals(hash as string, executableHash, StringComparison.OrdinalIgnoreCase)
                 && status.TryGetValue("mode", out mode)
-                && ((string)mode == "campaign" || (string)mode == "no_return" || !(bool)status["inPlay"]);
+                && ((mode as string) == "campaign" || (mode as string) == "no_return" || !(bool)status["inPlay"]);
         }
     }
 }

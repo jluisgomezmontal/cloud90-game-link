@@ -59,9 +59,9 @@ if ($WukongRefs) {
 }
 if ($Tlou2Adapter -or $Tlou2GameSha256) {
     if (!$Tlou2Adapter -or $Tlou2GameSha256 -notmatch '^[a-fA-F0-9]{64}$') {
-        throw 'TLOU2 requires a compatible adapter DLL and the SHA-256 of the verified game executable'
+        throw 'TLOU2 requires a compatible adapter ASI and the SHA-256 of the verified game executable'
     }
-    $resources['Cloud90.Tlou2.dll'] = (Resolve-Path -LiteralPath $Tlou2Adapter).Path
+    $resources['Cloud90.Tlou2.asi'] = (Resolve-Path -LiteralPath $Tlou2Adapter).Path
     $hashPath = Join-Path $resourceDir 'Cloud90.Tlou2.GameSha256'
     [IO.File]::WriteAllText($hashPath, $Tlou2GameSha256)
     $resources['Cloud90.Tlou2.GameSha256'] = $hashPath

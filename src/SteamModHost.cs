@@ -21,6 +21,10 @@ namespace Cloud90.GameLink
         protected abstract void SetFolder(Settings settings, string path);
         protected virtual string PluginFolder(string root) { return root; }
         protected virtual bool AcceptStatus(Dictionary<string, object> status) { return true; }
+        protected virtual string InactiveStatus(Dictionary<string, object> status)
+        {
+            return Title + " detectado. Entra en una partida controlable.";
+        }
         protected virtual bool ReportsPause { get { return false; } }
         string OwnedHash { get { return "cloud90-" + Id + "-owned.txt"; } }
         string DataRoot { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Cloud90GameLink", Id); } }
@@ -237,7 +241,7 @@ namespace Cloud90.GameLink
             foreach (Dictionary<string, object> ack in (System.Collections.IEnumerable)status["acks"])
                 link.OnModLine("ack " + (string)ack["id"] + " " + (string)ack["result"]);
             if (ReportsPause) Publish(link, epoch, active, capabilities.ToArray());
-            Progress(active ? Title + " listo para recibir efectos." : Title + " detectado. Entra en una partida controlable.");
+            Progress(active ? Title + " listo para recibir efectos." : InactiveStatus(status));
             return true;
         }
         public override void Uninstall(Settings settings)
