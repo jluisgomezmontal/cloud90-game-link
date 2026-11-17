@@ -4,18 +4,18 @@ The Game Link host and the Cloud90 Live preview catalog are wired to an adapter 
 
 ## Manual spawner check
 
-On 2026-11-17 the user reported that CalcioElite's Spawner worked on the supplied installation. Its local log shows the game-loop hook active and records queued requests for an infected runner and a clicker. A queued request does not confirm entity creation, hostile AI, or encounter completion in No Return.
+On 2026-11-17 the user reported that CalcioElite's Spawner worked in campaign mode on the supplied installation. Its local log shows the game-loop hook active and records queued requests for an infected runner and a clicker. A queued request does not confirm entity creation or hostile AI. No Return was not part of this manual test.
 
 The installed ASI exposes no PE exports. The core DLL exports only `NpcSpawnerBuildMarker`. The public mod page describes menu controls and does not document a spawn API. A Game Link adapter still needs a supported way to request a spawn and receive the result, plus a way to detect encounter transitions and remove the NPC it created.
 
 ## Verifying an adapter
 
-1. Confirm the executable path, SHA-256 and which process owns the Steam No Return session. This host targets `tlou-ii.exe`. Verify loader compatibility separately and document where the loader expects the adapter DLL. Game Link writes only `Cloud90.Tlou2.dll` next to the executable and its ownership manifest.
+1. Confirm the executable path, SHA-256 and which process owns the Steam game session. This host targets `tlou-ii.exe`. Verify loader compatibility separately and document where the loader expects the adapter DLL. Game Link writes only `Cloud90.Tlou2.dll` next to the executable and its ownership manifest.
 2. Build the adapter for the verified executable and package it with `build-gow-preview.ps1 -BaseExecutable <complete-client> -Tlou2Adapter <adapter.dll> -Tlou2GameSha256 <sha256>`. The output is `dist/Cloud90GameLink-Tlou2Preview.exe`.
 3. Use the SteamModHost file protocol. In `%LOCALAPPDATA%\Cloud90GameLink\tlou2`, read the active session from `active-session.txt` and poll that session directory's `inbox.json`. Publish `status.json` atomically. Follow `src/Hades.cs` for the inbox schema and `src/SteamModHost.cs` for status and ACK fields.
-4. In each status include the game PID, `bridgeVersion: "cloud90-tlou2-1"`, actual `gameSha256`, `mode: "no_return"` during No Return, a GetTickCount64-based heartbeat, the session and a session-prefixed encounter epoch. Only advertise capabilities proven in the live scene. Publish `inPlay: false` across pauses, loads, cutscenes, deaths and encounter transitions.
+4. In each status include the game PID, `bridgeVersion: "cloud90-tlou2-1"`, actual `gameSha256`, `mode: "campaign"` during campaign or `mode: "no_return"` during No Return, a GetTickCount64-based heartbeat, the session and a session-prefixed encounter epoch. Only advertise capabilities proven in the live scene. Publish `inPlay: false` across pauses, loads, cutscenes, deaths and encounter transitions.
 5. Implement `spawn_runner`, `heal` and `shield` on the game thread. Validate pause, connectivity, epoch, expiry, duplicate IDs and protection policy at execution. Limit the preview to one spawn per action, two owned live NPCs and 30 seconds between spawns. Track only owned NPCs, clean them up on transition or disconnect, and distinguish entity creation from confirmation of combat in diagnostics. ACK success only after the effect is confirmed. Read back health after applying bounded healing. Allow shield to block only new Cloud90 sabotage.
-6. Before enabling the catalog, validate a runner in two arenas and verify encounter completion with an owned NPC alive. Then test the web test button, a real gift, replayed commands, pause, reconnection, cleanup and overlay confirmation. Keep the catalog flag off while steps 1–5 are pending.
+6. Validate campaign first in a repeatable encounter. Verify that a spawned runner engages the player, can be removed by the adapter, and does not block progression when alive. Validate No Return independently before advertising capabilities for that mode. Then test the web test button, a real gift, replayed commands, pause, reconnection, cleanup and overlay confirmation. Keep the catalog flag off while steps 1–5 are pending.
 
 ## Local executable inventory
 

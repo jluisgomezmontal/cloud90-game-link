@@ -52,7 +52,7 @@ namespace Cloud90.GameLink
             return status.TryGetValue("gameSha256", out hash)
                 && string.Equals(hash as string, executableHash, StringComparison.OrdinalIgnoreCase)
                 && status.TryGetValue("mode", out mode)
-                && (string.Equals(mode as string, "no_return", StringComparison.Ordinal) || !(bool)status["inPlay"]);
+                && ((string)mode == "campaign" || (string)mode == "no_return" || !(bool)status["inPlay"]);
         }
     }
 }
