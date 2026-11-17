@@ -2,6 +2,12 @@
 
 The Game Link host and the Cloud90 Live preview catalog are wired to an adapter contract. No game-side adapter, native offsets, spawn functions, or supported game hash has been verified. The normal client omits the TLOU2 tab. The backend omits the catalog unless `CLOUD90_TLOU2_EXPERIMENTAL=1`.
 
+## Manual spawner check
+
+On 2026-11-17 the user reported that CalcioElite's Spawner worked on the supplied installation. Its local log shows the game-loop hook active and records queued requests for an infected runner and a clicker. A queued request does not confirm entity creation, hostile AI, or encounter completion in No Return.
+
+The installed ASI exposes no PE exports. The core DLL exports only `NpcSpawnerBuildMarker`. The public mod page describes menu controls and does not document a spawn API. A Game Link adapter still needs a supported way to request a spawn and receive the result, plus a way to detect encounter transitions and remove the NPC it created.
+
 ## Verifying an adapter
 
 1. Confirm the executable path, SHA-256 and which process owns the Steam No Return session. This host targets `tlou-ii.exe`. Verify loader compatibility separately and document where the loader expects the adapter DLL. Game Link writes only `Cloud90.Tlou2.dll` next to the executable and its ownership manifest.
