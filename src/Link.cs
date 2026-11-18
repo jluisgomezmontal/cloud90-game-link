@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -54,6 +55,15 @@ namespace Cloud90.GameLink
         }
 
         public bool Paused { get { return paused; } }
+        internal bool ImmediateTlou2Preview
+        {
+            get
+            {
+                return Game == "tlou2" &&
+                    Environment.GetEnvironmentVariable("CLOUD90_TLOU2_IMMEDIATE_PREVIEW") == "1" &&
+                    settings().Server == "http://127.0.0.1:39182";
+            }
+        }
 
         // The game's inbox once the game is found; effects wait for it.
         public void UseInbox(Inbox value)
@@ -163,7 +173,9 @@ namespace Cloud90.GameLink
                         socket = ws;
                     }
                     connectedAt = DateTime.UtcNow;
-                    await Send(new Dictionary<string, object> { { "type", "hello" }, { "game", Game }, { "version", Game == "tlou2" ? "cloud90-game-link-tlou2-1" : Game == "wukong" ? "cloud90-game-link-wukong-1" : Game == "blasphemous" ? "cloud90-game-link-blasphemous-2" : Game == "celeste" ? "cloud90-game-link-celeste-2" : Game == "rdr2" ? "cloud90-game-link-rdr2-5" : ProtocolVersion } });
+                    var hello = new Dictionary<string, object> { { "type", "hello" }, { "game", Game }, { "version", Game == "tlou2" ? Tlou2GiftPipe.Version : Game == "wukong" ? "cloud90-game-link-wukong-1" : Game == "blasphemous" ? "cloud90-game-link-blasphemous-2" : Game == "celeste" ? "cloud90-game-link-celeste-2" : Game == "rdr2" ? "cloud90-game-link-rdr2-5" : ProtocolVersion } };
+                    if (ImmediateTlou2Preview) hello["immediatePreview"] = true;
+                    await Send(hello);
                     pinger = Ping(ws, connection.Token);
                     await Receive(ws, connection.Token);
                     if (ws.CloseStatus.HasValue && ws.CloseStatus.Value != WebSocketCloseStatus.Empty)
@@ -388,6 +400,14 @@ namespace Cloud90.GameLink
             var message = new Dictionary<string, object> { { "type", "state" }, { "paused", paused }, { "inPlay", inPlay } };
             if (Game == "cuphead" || Game == "ctrnf" || (Game == "gtasa" || (Game == "smw" || (Game == "mvsc" || (Game == "mslugx" || Game == "gow1" || Game == "gow2" || Game == "rdr2" || Game == "celeste" || Game == "blasphemous" || Game == "tlou2" || Game == "wukong"))))) message["epoch"] = gameContext;
             if ((Game == "cuphead" || Game == "ctrnf" || (Game == "gtasa" || (Game == "smw" || (Game == "mvsc" || (Game == "mslugx" || Game == "gow1" || Game == "gow2" || Game == "rdr2" || Game == "celeste" || Game == "blasphemous" || Game == "tlou2" || Game == "wukong"))))) && capabilities != null) message["capabilities"] = capabilities;
+            if (Game == "tlou2" && capabilities != null)
+            {
+                var reported = capabilities;
+                string prefix = Tlou2GiftPipe.OptionPrefix;
+                message["capabilities"] = reported.Where(id => !id.StartsWith(prefix, StringComparison.Ordinal)).ToArray();
+                message["ambushOptions"] = reported.Where(id => id.StartsWith(prefix, StringComparison.Ordinal))
+                    .Select(id => id.Substring(prefix.Length)).ToArray();
+            }
             return Send(message);
         }
 

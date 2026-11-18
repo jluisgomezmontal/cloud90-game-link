@@ -30,6 +30,7 @@ if ($CupheadGameDir) {
 $artResources = @(Get-ChildItem (Join-Path $root 'assets') -File | Where-Object { $_.Extension -in @('.png', '.jpg', '.ico') } | ForEach-Object { "/resource:$($_.FullName),Art.$($_.Name)" })
 $arguments = @('/nologo', '/target:winexe', '/platform:anycpu', '/optimize+', "/out:$out", "/win32icon:$(Join-Path $root 'assets\cloud90.ico')",
     "/win32manifest:$(Join-Path $root 'app.manifest')",
+    "/resource:$(Join-Path $root 'mod\tlou2\game-sha256.txt'),Cloud90.Tlou2.GameSha256",
     "/resource:$(Join-Path $root 'mod\Cloud90.lua'),Cloud90.lua",
     "/resource:$(Join-Path $root 'mod\smw\Cloud90.lua'),Cloud90.Smw.lua",
     "/resource:$(Join-Path $root 'mame\plugins\cloud90\init.lua'),cloud90-mame-init.lua",
