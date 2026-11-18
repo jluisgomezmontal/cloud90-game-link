@@ -14,6 +14,7 @@ try {
     $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
     $dll = Join-Path $work 'LinkTests.dll'
     $sources = @(Get-ChildItem (Join-Path $root 'src') -Filter *.cs | ForEach-Object { $_.FullName }) + (Join-Path $PSScriptRoot 'LinkTests.cs') + (Join-Path $PSScriptRoot 'CupheadTests.cs') + (Join-Path $root 'mod\cuphead\Protocol.cs')
+    $sources += Join-Path $PSScriptRoot 'Tlou2GiftPipeTests.cs'
     $jsonRefs = @()
     if ($JsonDll) {
         # Avoid Get-FileHash autoload issues in a legacy PowerShell child of pwsh.
@@ -34,6 +35,7 @@ try {
         $failed += [BridgeJsonTests]::Run()
     }
     $t = [Cloud90.GameLink.LinkTests]
+    [Cloud90.GameLink.Tlou2GiftPipeTests]::Run()
 
     # 1. Inbox, read back by Lua.
     $inbox = Join-Path $work 'inbox.lua'

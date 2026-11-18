@@ -79,6 +79,22 @@ The local preview completed the path from the test page through the desktop clie
 
 An administrator can generate a TLOU2 token in Cloud90 Live. Other accounts need MAX with approval for TLOU2. Open the packaged desktop client, paste the TLOU2 token, and connect an active campaign. Disable **Sin morir** for **Refuerzo infectado**. The result appears in history after the spawn acknowledgment. Game Link distinguishes manual tests from audience effects and passes the audience name when supplied by Cloud90 Live. The hosted page still needs an end-to-end test.
 
+## Testing enemy ambushes
+
+Game Link protocol `cloud90-game-link-tlou2-3` reports the exact option IDs in `ambushOptions` and signals when Gift Spawner can accept a new NPC. Cloud90 queues rapid ambushes and sends one at a time when the mod is ready. The legacy Runner effect retains its 30-second interval. The bridge sends a random distance from 5 through 10 meters. Gift Spawner chooses placement using its forward spawn and navigation logic. The protocol provides no free angle or world-coordinate field.
+
+The backend defaults to the 23 presets whose appearances were confirmed by Gift Spawner after testing from the Cloud90 preview. `GAME_LINK_TLOU2_VERIFIED_AMBUSH_OPTIONS` overrides the complete comma-separated list. Game Link and the backend must both report support for an option before it can fire. Sorpresa chooses an available common enemy. Bosses are chosen directly. The dashboard history and OBS use the concrete enemy from the dispatched command.
+
+Open a repeatable campaign checkpoint and run `tests/tlou2-preview-local.ps1 -Executable <path-to-preview-exe>` in normal PowerShell. Its local page lists the options reported by Game Link independently of the hosted backend's verified list. Test the original Runner and then each new preset. Record the chapter, appearance, hostility, defeat and whether the objective advances. Test both an empty area and an active encounter, plus pause and transition behavior. The response from the mod confirms appearance. Combat and progression require observation in the game.
+
+QA4 lists Rat King, its Stalker and Bloater profiles, the two hostile WLF variants and both Seraphite bosses when the installed mod reports those presets. The QA4 campaign log confirmed successful appearances for these profiles except the Seraphite brute boss, which remains available in the local preview for testing. The main Game Link build embeds the verified executable hash and enables the TLOU2 tab. Install Gift Spawner 1.2.0 separately.
+
+On November 18, 2026, a manual spawn from Gift Spawner's in-game menu in campaign changed the NPC counter from 0 to 1 and reported `preset=Clicker`, `wait_ms=432` and `result=ok` on build `t2r-pc-1.6.0`. The player died roughly six seconds later. The log does not identify the cause of death. This establishes appearance for this checkpoint. Game Link dispatch, Clicker defeat and campaign progression still need verification.
+
+Later that morning, the local Game Link preview confirmed appearances for Runner, Clicker, armored Clicker, Stalker, Shambler, Bloater, Crawler, armored Rattler with rifle, Seraphite with hammer and Seraphite brute with sledgehammer. The game log recorded `user=Cloud90` and `result=ok` for all ten. These results establish appearance. Defeat and campaign progression still need verification.
+
+The preview keeps the discovered options visible when the game pauses or Game Link reconnects. A scheduled test waits for the currently reported option, a stable campaign epoch and the interval between spawns. Switch back to the game after scheduling and resume the campaign within 45 seconds.
+
 ## Verifying an adapter
 
 1. Confirm the executable path, SHA-256 and which process owns the Steam game session. This host targets `tlou-ii.exe`. Verify loader compatibility separately and document where the loader expects the adapter ASI. Game Link writes only `Cloud90.Tlou2.asi` next to the executable and its ownership manifest.

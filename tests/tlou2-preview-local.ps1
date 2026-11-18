@@ -1,7 +1,8 @@
-param([string]$WsModule)
+param([string]$WsModule, [string]$Executable = '')
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
-$exe = Join-Path $repo 'dist/Cloud90GameLink-Tlou2Preview-Local.exe'
+$exe = if ($Executable) { (Resolve-Path -LiteralPath $Executable).Path }
+       else { Join-Path $repo 'dist/Cloud90GameLink-Tlou2Preview-Local.exe' }
 if (!(Test-Path -LiteralPath $exe)) { throw 'Falta la compilación local de Game Link.' }
 if (Get-Process -Name 'Cloud90GameLink*' -ErrorAction SilentlyContinue) {
     throw 'Cierra la ventana de Game Link que ya está abierta y vuelve a ejecutar este comando.'
@@ -13,6 +14,7 @@ if (!$WsModule) {
 $env:WS_MODULE = (Resolve-Path -LiteralPath $WsModule).Path
 $env:CLOUD90_TEST_TOKEN = 'c90gl_' + [Guid]::NewGuid().ToString('N')
 $env:CLOUD90_TEST_PORT = '39182'
+$env:CLOUD90_TLOU2_IMMEDIATE_PREVIEW = '1'
 $origin = 'http://127.0.0.1:' + $env:CLOUD90_TEST_PORT
 $profile = Join-Path $repo ('dist/tlou2-native/local-preview-' + [Guid]::NewGuid().ToString('N'))
 $env:CLOUD90_GAME_LINK_DIR = $profile

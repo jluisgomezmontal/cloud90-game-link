@@ -18,8 +18,8 @@ namespace Cloud90.GameLink
         protected override bool PollExternalMod(int gamePid, string session, Inbox commands, Link link)
         {
             bool ready = giftPipe.Poll(gamePid, session, commands, link);
-            Publish(link, giftPipe.Epoch, ready, ready ? new[] { "spawn_runner" } : new string[0]);
-            Progress(ready ? "Gift Spawner listo para invocar un corredor." : "Esperando una partida disponible en Gift Spawner.");
+            Publish(link, giftPipe.Epoch, ready, ready ? giftPipe.Capabilities() : new string[0]);
+            Progress(ready ? "Gift Spawner listo para invocar enemigos." : "Esperando una partida disponible en Gift Spawner.");
             return true;
         }
 
