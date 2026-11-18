@@ -75,6 +75,7 @@ namespace Cloud90.GameLink
                 case "ctrnf": return "Dale a tu chat un lugar en la carrera.";
                 case "cuphead": return "Cada regalo puede cambiar el siguiente intento.";
                 case "kof2002": return "Lleva la energía de tu chat al combate.";
+                case "tlou2": return "Invoca un corredor desde Cloud90 Live durante la campaña.";
                 default: return "Tu chat se une a la misión.";
             }
         }
@@ -91,7 +92,9 @@ namespace Cloud90.GameLink
                 case "cuphead": return "Steam, modo individual. F9 pausa los efectos.";
                 case "kof2002": return "MAME, jugador 1 contra la CPU. Los efectos se activan durante la ronda.";
                 case "mslug3": return "MAME, modo de 1 jugador. Los efectos se activan durante la partida.";
-                default: return "Abre Hades desde aquí para recibir los efectos durante la partida.";
+                case "tlou2": return "Carga una partida de campaña y pulsa Abrir o conectar juego.";
+                case "hades": return "Abre Hades desde aquí para recibir los efectos durante la partida.";
+                default: return "Abre el juego para recibir los efectos durante la partida.";
             }
         }
     }

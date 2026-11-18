@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$BaseExecutable, [string]$Rdr2SdkPath, [string]$CelesteEverestLib, [string]$Dotnet = 'dotnet', [string]$BlasphemousManaged, [string]$BlasphemousLoaderCore, [string]$WukongRefs, [string]$Tlou2Adapter, [string]$Tlou2GameSha256, [switch]$RebuildGta, [string]$CupheadGameDir, [string]$CupheadBepInExDir)
+param([Parameter(Mandatory=$true)][string]$BaseExecutable, [string]$Rdr2SdkPath, [string]$CelesteEverestLib, [string]$Dotnet = 'dotnet', [string]$BlasphemousManaged, [string]$BlasphemousLoaderCore, [string]$WukongRefs, [string]$Tlou2Adapter, [string]$Tlou2GameSha256, [switch]$RebuildGta, [string]$CupheadGameDir, [string]$CupheadBepInExDir, [ValidatePattern('^[a-zA-Z0-9_-]+\.exe$')][string]$OutputFileName)
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
 $base = [Reflection.Assembly]::LoadFile((Resolve-Path -LiteralPath $BaseExecutable).Path)
@@ -58,15 +58,16 @@ if ($WukongRefs) {
     $outputName = 'Cloud90GameLink.exe'
 }
 if ($Tlou2Adapter -or $Tlou2GameSha256) {
-    if (!$Tlou2Adapter -or $Tlou2GameSha256 -notmatch '^[a-fA-F0-9]{64}$') {
-        throw 'TLOU2 requires a compatible adapter ASI and the SHA-256 of the verified game executable'
+    if ($Tlou2GameSha256 -notmatch '^[a-fA-F0-9]{64}$') {
+        throw 'TLOU2 requires the SHA-256 of the verified game executable'
     }
-    $resources['Cloud90.Tlou2.asi'] = (Resolve-Path -LiteralPath $Tlou2Adapter).Path
+    if ($Tlou2Adapter) { $resources['Cloud90.Tlou2.asi'] = (Resolve-Path -LiteralPath $Tlou2Adapter).Path }
     $hashPath = Join-Path $resourceDir 'Cloud90.Tlou2.GameSha256'
     [IO.File]::WriteAllText($hashPath, $Tlou2GameSha256)
     $resources['Cloud90.Tlou2.GameSha256'] = $hashPath
     $outputName = 'Cloud90GameLink-Tlou2Preview.exe'
 }
+if ($OutputFileName) { $outputName = $OutputFileName }
 $argsList = @('/nologo','/target:winexe','/platform:anycpu','/optimize+',('/out:'+(Join-Path $root ('dist\' + $outputName))),('/win32icon:'+(Join-Path $root 'assets\cloud90.ico')),('/win32manifest:'+(Join-Path $root 'app.manifest')),'/r:System.Web.Extensions.dll','/r:System.Windows.Forms.dll','/r:System.Drawing.dll','/r:System.Security.dll','/r:System.Core.dll','/r:System.IO.Compression.dll','/r:System.IO.Compression.FileSystem.dll')
 foreach($name in $resources.Keys) { $argsList += '/resource:'+$resources[$name]+','+$name }
 $argsList += @(Get-ChildItem (Join-Path $root 'src') -Filter *.cs | ForEach-Object FullName)

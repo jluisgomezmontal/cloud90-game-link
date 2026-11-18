@@ -298,6 +298,7 @@ namespace Cloud90.GameLink
                 if (Game == "cuphead" || Game == "ctrnf" || (Game == "gtasa" || (Game == "smw" || (Game == "mvsc" || (Game == "mslugx" || Game == "gow1" || Game == "gow2" || Game == "rdr2" || Game == "celeste" || Game == "blasphemous" || Game == "tlou2" || Game == "wukong"))))) item.Epoch = Str(msg, "epoch");
                 item.Ms = Math.Max(0, Math.Min(ms, 120000));
                 item.By = Str(msg, "by");
+                item.IsTest = Game == "tlou2" && msg.ContainsKey("test") && Equals(msg["test"], true);
                 item.Safe = msg.ContainsKey("safe") && msg["safe"] is bool && (bool)msg["safe"];
                 item.AllowDestructive = msg.ContainsKey("allowDestructive") && msg["allowDestructive"] is bool && (bool)msg["allowDestructive"];
                 string arg = Str(msg, "arg");
