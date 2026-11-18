@@ -20,7 +20,15 @@ namespace Cloud90.GameLink
         protected abstract string BridgeVersion { get; }
         protected abstract void SetFolder(Settings settings, string path);
         protected virtual string PluginFolder(string root) { return root; }
+        protected virtual bool AcceptStatus(Dictionary<string, object> status) { return true; }
+        protected virtual string InactiveStatus(Dictionary<string, object> status)
+        {
+            return Title + " detectado. Entra en una partida controlable.";
+        }
         protected virtual bool ReportsPause { get { return false; } }
+        protected virtual bool UsesExternalMod(Settings settings) { return false; }
+        protected virtual bool PollExternalMod(int gamePid, string gameSession, Inbox commands, Link link) { return false; }
+        protected virtual void CloseExternalMod() {}
         string OwnedHash { get { return "cloud90-" + Id + "-owned.txt"; } }
         string DataRoot { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Cloud90GameLink", Id); } }
         protected virtual string Executable(string path) { return Path.Combine(path, ProcessName + ".exe"); }
@@ -75,14 +83,18 @@ namespace Cloud90.GameLink
             return processes.Length != 0;
         }
 
+        byte[] PluginPayload()
+        {
+            using (var resource = Assembly.GetExecutingAssembly().GetManifestResourceStream(Plugin))
+            using (var copy = new MemoryStream()) { resource.CopyTo(copy); return copy.ToArray(); }
+        }
+
         void Install(string root)
         {
             root = PluginFolder(root);
             string path = CupheadInstaller.SafePath(root, Plugin);
             string manifest = CupheadInstaller.SafePath(root, OwnedHash);
-            byte[] payload;
-            using (var resource = Assembly.GetExecutingAssembly().GetManifestResourceStream(Plugin))
-            using (var copy = new MemoryStream()) { resource.CopyTo(copy); payload = copy.ToArray(); }
+            byte[] payload = PluginPayload();
             string hash = CupheadInstaller.Hash(payload);
             if (File.Exists(path))
             {
@@ -107,10 +119,22 @@ namespace Cloud90.GameLink
         public override Inbox Prepare(Settings settings)
         {
             if (Running) return inbox;
-            if (AnotherRunning()) throw new InvalidOperationException("Cierra " + Title + " primero.");
+            bool gameOpen = AnotherRunning();
+            if (gameOpen && !AllowsAttach) throw new InvalidOperationException("Cierra " + Title + " primero.");
             string problem = Problem(settings);
             if (problem.Length != 0) throw new InvalidOperationException(problem);
-            Install(Folder(settings));
+            if (gameOpen)
+            {
+                if (FindGamePid(settings) == 0)
+                    throw new InvalidOperationException("El juego abierto está en otra carpeta.");
+                if (!UsesExternalMod(settings))
+                {
+                    string path = CupheadInstaller.SafePath(PluginFolder(Folder(settings)), Plugin);
+                    if (!File.Exists(path) || CupheadInstaller.HashFile(path) != CupheadInstaller.Hash(PluginPayload()))
+                        throw new InvalidOperationException("Cierra el juego para instalar o actualizar el adaptador.");
+                }
+            }
+            else if (!UsesExternalMod(settings)) Install(Folder(settings));
             if (inbox != null) inbox.Dispose();
             session = Guid.NewGuid().ToString("N");
             directory = Path.Combine(DataRoot, session);
@@ -121,45 +145,41 @@ namespace Cloud90.GameLink
 
         public override void Start(Settings settings, Link link, Action exited)
         {
-            if (AnotherRunning()) throw new InvalidOperationException("Cierra " + Title + " primero.");
+            int attachedPid = AllowsAttach ? FindGamePid(settings) : 0;
+            bool external = UsesExternalMod(settings);
+            if (attachedPid == 0 && AnotherRunning()) throw new InvalidOperationException("Cierra " + Title + " primero.");
             string pointer = Path.Combine(DataRoot, "active-session.txt");
             File.WriteAllText(pointer, session, new UTF8Encoding(false));
-            try { using (Process.Start(new ProcessStartInfo("steam://rungameid/" + SteamAppId) { UseShellExecute = true })) {} }
+            try
+            {
+                if (attachedPid == 0)
+                    using (Process.Start(new ProcessStartInfo("steam://rungameid/" + SteamAppId) { UseShellExecute = true })) {}
+            }
             catch { ClearPointer(pointer); throw; }
-            pid = 0;
+            pid = attachedPid;
             reported = null;
             playing = null;
             localPaused = false;
             Publish(link, "", false, new string[0]);
-            Progress("Abre una partida desde Steam.");
+            Progress(attachedPid != 0 ? "Esperando respuesta del adaptador del juego abierto." : "Abre una partida desde Steam.");
             var watch = Stopwatch.StartNew();
             timer = new Timer(delegate
             {
                 if (!Monitor.TryEnter(watch)) return;
                 try
                 {
-                    if (pid == 0)
-                    {
-                        foreach (var process in Process.GetProcessesByName(ProcessName))
-                        {
-                            using (process)
-                            {
-                                if (!process.HasExited && pid == 0 &&
-                                    string.Equals(process.MainModule.FileName, Executable(Folder(settings)), StringComparison.OrdinalIgnoreCase))
-                                    pid = process.Id;
-                            }
-                        }
-                    }
+                    if (pid == 0) pid = FindGamePid(settings);
                     if (pid == 0 && watch.Elapsed.TotalMinutes < 3) return;
                     if (pid == 0 || !ProcessAlive(pid))
                     {
                         timer.Dispose(); timer = null;
+                        if (external) CloseExternalMod();
                         inbox.Connected(false);
                         ClearPointer(pointer);
                         exited();
                         return;
                     }
-                    if (!ReadStatus(link))
+                    if (!(external ? PollExternalMod(pid, session, inbox, link) : ReadStatus(link)))
                     {
                         Publish(link, "", false, new string[0]);
                         Progress("Esperando respuesta del mod de " + Title + ".");
@@ -167,11 +187,26 @@ namespace Cloud90.GameLink
                 }
                 catch (Exception error)
                 {
+                    if (external) CloseExternalMod();
                     Publish(link, "", false, new string[0]);
                     Progress("No se pudo leer " + Title + ": " + error.Message);
                 }
                 finally { Monitor.Exit(watch); }
             }, null, 250, 250);
+        }
+
+        int FindGamePid(Settings settings)
+        {
+            string expected = Executable(Folder(settings));
+            var processes = Process.GetProcessesByName(ProcessName);
+            try
+            {
+                foreach (var process in processes)
+                    if (!process.HasExited && string.Equals(process.MainModule.FileName, expected, StringComparison.OrdinalIgnoreCase))
+                        return process.Id;
+                return 0;
+            }
+            finally { foreach (var process in processes) process.Dispose(); }
         }
 
         static bool ProcessAlive(int processId)
@@ -183,14 +218,14 @@ namespace Cloud90.GameLink
         {
             if (File.Exists(path) && File.ReadAllText(path) == session) File.Delete(path);
         }
-        void Progress(string text)
+        protected void Progress(string text)
         {
             if (text == reported) return;
             reported = text;
             ReportStatus(text);
             Log.Write(Title + ": " + text);
         }
-        void Publish(Link link, string epoch, bool active, string[] capabilities)
+        protected void Publish(Link link, string epoch, bool active, string[] capabilities)
         {
             link.SetContext(epoch);
             link.SetCapabilities(capabilities);
@@ -215,6 +250,7 @@ namespace Cloud90.GameLink
             if ((string)status["session"] != session || !SessionId.IsMatch(session) ||
                 (string)status["bridgeVersion"] != BridgeVersion || Convert.ToInt32(status["pid"]) != pid ||
                 !epoch.StartsWith(session + "_", StringComparison.Ordinal) || now < beat || now - beat > 2000) return false;
+            if (!AcceptStatus(status)) return false;
             bool active = (bool)status["inPlay"];
             var capabilities = new List<string>();
             foreach (object effect in (System.Collections.IEnumerable)status["capabilities"])
@@ -235,7 +271,7 @@ namespace Cloud90.GameLink
             foreach (Dictionary<string, object> ack in (System.Collections.IEnumerable)status["acks"])
                 link.OnModLine("ack " + (string)ack["id"] + " " + (string)ack["result"]);
             if (ReportsPause) Publish(link, epoch, active, capabilities.ToArray());
-            Progress(active ? Title + " listo para recibir efectos." : Title + " detectado. Entra en una partida controlable.");
+            Progress(active ? Title + " listo para recibir efectos." : InactiveStatus(status));
             return true;
         }
         public override void Uninstall(Settings settings)

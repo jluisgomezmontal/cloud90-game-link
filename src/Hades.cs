@@ -127,6 +127,7 @@ namespace Cloud90.GameLink
             public string By;
             public bool Safe;
             public bool AllowDestructive;
+            public bool IsTest;
             // The streamer's pick for the effect (an enemy's name), or "".
             public string Arg = "";
             public string Epoch = "";

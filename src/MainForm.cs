@@ -34,6 +34,7 @@ namespace Cloud90.GameLink
         public abstract void Start(Settings s, Link link, Action exited);
         public abstract bool Running { get; }
         public abstract bool AnotherRunning();
+        public virtual bool AllowsAttach { get { return false; } }
         public abstract void Uninstall(Settings s);
     }
 
@@ -173,7 +174,7 @@ namespace Cloud90.GameLink
             var actions = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 3, Margin = Padding.Empty };
             actions.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60)); actions.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40));
             actions.RowStyles.Add(new RowStyle(SizeType.Absolute, 48)); actions.RowStyles.Add(new RowStyle(SizeType.Absolute, 78)); actions.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-            Design.Button(playButton, "Abrir juego", true); Design.Button(pauseButton, "Pausar efectos", false);
+            Design.Button(playButton, host.AllowsAttach ? "Abrir o conectar juego" : "Abrir juego", true); Design.Button(pauseButton, "Pausar efectos", false);
             playButton.Dock = DockStyle.Fill; playButton.Margin = new Padding(0, 0, 8, 4);
             pauseButton.Dock = DockStyle.Fill; pauseButton.Margin = new Padding(8, 0, 0, 4);
             Label playNote = Design.Label(Design.PlayNote(host.Id), 9, Design.Muted); playNote.Dock = DockStyle.Fill; playNote.Margin = new Padding(0, 7, 0, 0);
@@ -284,7 +285,7 @@ namespace Cloud90.GameLink
         void Play()
         {
             if (host.Running) return;
-            if (host.AnotherRunning())
+            if (!host.AllowsAttach && host.AnotherRunning())
             {
                 MessageBox.Show(form, host.Title + " ya está abierto. Ciérralo y ábrelo desde aquí: así Cloud90 Game Link puede leer lo que responde el juego.", form.Text);
                 return;
@@ -296,9 +297,9 @@ namespace Cloud90.GameLink
                 host.Start(form.Settings, link, delegate
                 {
                     link.OnGameExited();
-                    form.OnUi(delegate { gameStatus.Text = "Juego cerrado. Puedes abrirlo de nuevo."; playButton.Text = "Abrir juego"; playButton.Enabled = true; folderButton.Enabled = true; });
+                    form.OnUi(delegate { gameStatus.Text = "Juego cerrado. Puedes abrirlo de nuevo."; playButton.Text = host.AllowsAttach ? "Abrir o conectar juego" : "Abrir juego"; playButton.Enabled = true; folderButton.Enabled = true; });
                 });
-                gameStatus.Text = "Juego abierto desde Game Link";
+                gameStatus.Text = host.AllowsAttach ? "Buscando el adaptador del juego" : "Juego abierto desde Game Link";
                 playButton.Text = "Juego abierto";
                 playButton.Enabled = false;
                 folderButton.Enabled = false;
@@ -451,6 +452,11 @@ namespace Cloud90.GameLink
             {
                 Array.Resize(ref panels, panels.Length + 1);
                 panels[panels.Length - 1] = new GamePanel(this, new WukongHost());
+            }
+            if (Tlou2Host.Packaged)
+            {
+                Array.Resize(ref panels, panels.Length + 1);
+                panels[panels.Length - 1] = new GamePanel(this, new Tlou2Host());
             }
             navigation = new GameNavigationButton[panels.Length];
             for (int i = 0; i < panels.Length; i++)

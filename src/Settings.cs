@@ -25,6 +25,7 @@ namespace Cloud90.GameLink
         public string Rdr2Dir = "";
         public string CelesteDir = "";
         public string BlasphemousDir = "";
+        public string Tlou2Dir = "";
         public string WukongDir = "";
         public string SmwDir = "";
         public string Pcsx2Dir = "";
@@ -74,6 +75,7 @@ namespace Cloud90.GameLink
                 else if (key == "ctr_dir") s.CtrDir = value;
                 else if (key == "cuphead_dir") s.CupheadDir = value;
                 else if (key == "smw_dir") s.SmwDir = value;
+                else if (key == "tlou2_dir") s.Tlou2Dir = value;
                 else if (key == "wukong_dir") s.WukongDir = value;
                 else if (key == "blasphemous_dir") s.BlasphemousDir = value;
                 else if (key == "celeste_dir") s.CelesteDir = value;
@@ -119,6 +121,7 @@ namespace Cloud90.GameLink
             if (CtrDir.Length > 0) lines.Add("ctr_dir=" + CtrDir);
             if (CupheadDir.Length > 0) lines.Add("cuphead_dir=" + CupheadDir);
             if (SmwDir.Length > 0) lines.Add("smw_dir=" + SmwDir);
+            if (Tlou2Dir.Length > 0) lines.Add("tlou2_dir=" + Tlou2Dir);
             if (WukongDir.Length > 0) lines.Add("wukong_dir=" + WukongDir);
             if (BlasphemousDir.Length > 0) lines.Add("blasphemous_dir=" + BlasphemousDir);
             if (CelesteDir.Length > 0) lines.Add("celeste_dir=" + CelesteDir);
