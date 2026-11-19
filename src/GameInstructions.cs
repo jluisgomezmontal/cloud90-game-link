@@ -38,13 +38,25 @@ namespace Cloud90.GameLink
             };
             var close = new Button(); Design.Button(close, "Entendido", false); close.Dock = DockStyle.Fill; close.Margin = Padding.Empty; close.DialogResult = DialogResult.OK;
             footer.Controls.Add(openCloud90, 0, 0); footer.Controls.Add(close, 2, 0); CancelButton = close; AcceptButton = close;
+            if (gameId == "tlou2")
+            {
+                var downloadMod = new Button();
+                Design.Button(downloadMod, "Descargar Gift Spawner", false);
+                downloadMod.Dock = DockStyle.Fill;
+                downloadMod.Margin = new Padding(12, 0, 12, 0);
+                downloadMod.Click += delegate {
+                    try { Process.Start(new ProcessStartInfo("https://www.nexusmods.com/thelastofuspart2/mods/812") { UseShellExecute = true }); }
+                    catch (Exception error) { MessageBox.Show(this, "No se pudo abrir Nexus Mods: " + error.Message, Text); }
+                };
+                footer.Controls.Add(downloadMod, 1, 0);
+            }
 
             var scroll = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = Design.Background, AccessibleName = "Instrucciones de " + gameTitle };
             var content = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, ColumnCount = 1, RowCount = 0, Padding = new Padding(26, 22, 26, 14) };
             content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             AddSection(content, "1. Prepara tu instalación", Requirements(gameId));
             AddSection(content, "2. Conecta tu cuenta", "Entra a cloud90.dev › Juegos › " + gameTitle + ". Necesitas tener acceso a ese juego en tu cuenta. Pulsa Generar token, cópialo y vuelve a este juego en Game Link para pulsar Pegar token. Cada juego tiene su propio token; no lo compartas.");
-            AddSection(content, "3. Abre la partida desde Game Link", Launch(gameId));
+            AddSection(content, gameId == "tlou2" ? "3. Abre o conecta el juego" : "3. Abre la partida desde Game Link", Launch(gameId));
             AddSection(content, "4. Configura lo que hace tu chat", "En la página de este juego en Cloud90, configura las reglas: elige qué regalo, taps, follow o share activa cada efecto. Guarda los cambios y activa las reglas que quieras usar. Para los eventos del público, mantén conectada tu plataforma de transmisión en Cloud90 y deja Game Link abierto.");
             AddSection(content, "Cuándo funcionan los efectos", Gameplay(gameId));
             if (gameId == "gtasa") {
@@ -83,6 +95,7 @@ namespace Cloud90.GameLink
             if(game=="gow1"||game=="gow2")return "PCSX2 para Windows, BIOS y tu propia imagen del juego. Activa PINE en los ajustes avanzados (slot 28011). God of War I: SCUS-97399 / D6385328. Usa Start-GodOfWarPreview.ps1 para abrir la compilación experimental. God of War II: SCUS-97481 / 2F123FD8. Cada juego requiere su propio token.";
             switch (game)
             {
+                case "tlou2": return "Necesitas The Last of Us Part II Remastered para Windows, compilación compatible t2r-pc-1.6.0, y TLOU2 Gift Spawner 1.2.0. Descarga el mod por separado con el botón de abajo.\n\nCon el juego cerrado, extrae el ZIP en la carpeta que contiene tlou-ii.exe. Junto al ejecutable deben quedar version.dll, TLOU2GiftSpawner.dll y la carpeta TLOU2GiftSpawner. El ZIP ya incluye su cargador. Para las emboscadas de Cloud90 basta con este mod.\n\nEn Game Link, pulsa Carpeta de The Last of Us Part II y selecciona esa misma carpeta.";
                 case "mslugx": return "Necesitas MAME 0.289 para Windows, tus ROMs mslugx.zip y neogeo.zip auditadas dentro de roms. Selecciona la carpeta con mame.exe e instala el plugin con MAME cerrado. Usa el token propio de Metal Slug X.";
                 case "mvsc": return "Necesitas MAME 0.289 para Windows y tus archivos mvscu.zip (USA 980123), mvsc.zip (padre) y dependencias en roms. Conserva ambos ZIP sin descomprimir. Elige la carpeta que contiene mame.exe. Game Link instala el plugin y audita la revisión USA antes de abrirla; no incluye ROMs. Este juego es CPS-2 y no requiere neogeo.zip.";
                 case "smw": return "Necesitas SuperMarioWorldRecomp 0.15.6 compatible para Windows y tu ROM USA. Abre el juego normalmente una vez, selecciona la ROM y ciérralo. Desactiva Native Co-op y Captain Falcon en Mods. Selecciona la carpeta con SuperMarioWorldSNESRecomp.exe. No requiere Python; Cloud90 no incluye ROM ni runtime.";
@@ -100,6 +113,7 @@ namespace Cloud90.GameLink
             if(game=="gow1"||game=="gow2")return "Selecciona la carpeta de PCSX2, pega el token propio del juego y pulsa Abrir juego. Elige tu imagen ISO o CHD. Inicia una partida y mantén Game Link abierto. No uses estados guardados durante la conexión.";
             switch (game)
             {
+                case "tlou2": return "Pulsa Abrir o conectar juego. Si ya abriste el juego desde esa carpeta, Game Link se conecta a la partida existente. Inicia o carga una partida de campaña y deja Game Link abierto.";
                 case "mslugx": return "Abre Metal Slug X desde Game Link. Inserta crédito e inicia una partida individual como P1. F9 pausa efectos; Shift+F9 conserva la función original de MAME. Sin Fightcade ni netplay.";
                 case "mvsc": return "Pulsa Abrir juego. Inserta monedas hasta tener al menos un crédito, pulsa Start del jugador 1 y elige tus dos personajes. Juega contra la CPU. Usa el token propio de Marvel vs. Capcom; el de KOF no sirve para este juego. F9 o Pausar efectos limpian los modificadores temporales.";
                 case "smw": return "Pulsa Abrir juego y selecciona 1 Player. El juego abre directamente usando tu ROM y ajustes existentes. Entra en un nivel y mantén Game Link abierto. F9 pausa los efectos; mientras Game Link controla el juego, F9 no carga la ranura de estado 9. Shift+F9 conserva su función de guardar.";
@@ -117,6 +131,7 @@ namespace Cloud90.GameLink
             if(game=="gow1")return "Candidatos de prueba: curar, dañar, vida completa, matar a Kratos, dar/quitar/vaciar/completar magia, furia completa/vacía, espadas y mejoras mínimas/máximas y escudo, dar/quitar 500 orbes. Matar requiere desactivar Modo sin morir y habilitar efectos destructivos. Las mejoras requieren habilitar efectos destructivos y pueden persistir al guardar; no se revierten al pausar. Dar/quitar 500 orbes también requiere permiso para cambios permanentes. Nivel significa mejoras de armas/poderes, no capítulo ni dificultad. Sin magia vacía el medidor una vez. No cargues estados durante la conexión. F9 pausa los efectos. Congelación, petrificación y enemigos no están implementados. Los candidatos aún necesitan tus pruebas en combate.";
             switch (game)
             {
+                case "tlou2": return "Las emboscadas se habilitan cuando Gift Spawner detecta una partida de campaña activa en la que puedes controlar a tu personaje. Las invocaciones disponibles dependen del estado de la partida. En Cloud90 Live, elige un enemigo disponible para probar la emboscada.";
                 case "mslugx": return "Los efectos se habilitan a pie, en forma normal y durante una misión activa. La invulnerabilidad a golpes no garantiza protección contra caídas o reloj. Los sabotajes de controles pueden provocar muertes. Al morir o cambiar de zona se limpian los efectos temporales.";
                 case "mvsc": return "Los efectos funcionan durante una pelea individual activa: no durante demostraciones, selección, introducciones, KO, resultados, pausa ni dos jugadores. Curar y Quitar vida siguen al personaje activo; el súper pertenece al equipo. Quitar vida conserva al menos 1 HP y quitar tiempo conserva 10, pero la CPU todavía puede vencerte. Cambiar de combate, cargar un estado, desconectar o pausar cancela efectos temporales. Los cambios instantáneos de vida, súper y reloj no se deshacen.";
                 case "smw": return "Los efectos funcionan en niveles individuales, fuera de menús, pausa, muerte y transiciones. Los enemigos se duplican de tipos compatibles visibles y requieren espacios libres. Ráfagas y modificadores de salto requieren tierra firme y no montar a Yoshi. Invulnerabilidad no protege de caídas ni lava. Pausar, desconectar o cambiar de intento cancela los efectos temporales; poderes, vidas, reloj y enemigos ya aplicados son instantáneos y no se deshacen. Cargar estados guardados durante una conexión no está soportado: pausa los efectos y vuelve a abrir el juego para reconectar.";
@@ -130,6 +145,7 @@ namespace Cloud90.GameLink
         }
         static string Troubleshooting(string game)
         {
+            if (game == "tlou2") return "Si Game Link espera a Gift Spawner, confirma que los archivos del mod estén junto a tlou-ii.exe y reinicia el juego. En una partida, pulsa Insert para comprobar que el menú de Gift Spawner abre. Si el menú abre pero los efectos no se habilitan, reanuda la campaña y consulta Mostrar registro en Game Link. Usa Pausar efectos y Reanudar efectos desde Game Link para controlar la recepción de emboscadas.";
             string panic = game == "mvsc" || game == "smw" || game == "gtasa" || game == "cuphead" || game == "ctrnf" ? "También puedes usar F9 dentro del juego para pausar o reanudar los efectos. " : "";
             return "Pulsa Pausar efectos en Game Link para detenerlos y Reanudar efectos para volver a recibirlos. " + panic + "Si no conecta, revisa tu acceso y el token de este juego en cloud90.dev. Si un efecto no se aplica, comprueba que la partida esté activa, que las reglas estén habilitadas y que no haya una pausa o un enfriamiento. Abre Mostrar registro para consultar el motivo. Cierra el juego antes de instalar, actualizar o quitar su integración.";
         }

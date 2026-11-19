@@ -18,3 +18,7 @@ composition; the Game Link banner and selector both find it through `Art.gow1.pn
 God of War II uses `gow2.png`, converted without cropping from the existing
 frontend `public/juegos/gow2.webp` (960 × 540). Its selector and banner load
 the same composition through `Art.gow2.png`.
+
+The Last of Us Part II Remastered uses `tlou2.jpg`, the Epic Games Store artwork
+referenced by the frontend's `GAME_ART.tlou2` for `/juegos/tlou2`. It is
+embedded without cropping through `Art.tlou2.jpg`.

@@ -34,6 +34,12 @@ namespace Cloud90.GameLink
                 Check(adapter.Capabilities().SequenceEqual(new[]
                     { "spawn_runner", "enemy_ambush", "enemy_ambush_ready", "enemy_ambush:clicker", "enemy_ambush:runner" }),
                     "only the exact allowlisted preset and faction are advertised");
+                long lastState = (long)typeof(Tlou2GiftPipe).GetField("lastState", fields).GetValue(adapter);
+                Check(adapter.CampaignReady(lastState + 10000), "an unchanged campaign stays ready between state heartbeats");
+                Check(!adapter.CampaignReady(lastState + 12001), "a missed state heartbeat expires campaign readiness");
+                read("{\"t\":\"state\",\"gameReady\":false}");
+                lastState = (long)typeof(Tlou2GiftPipe).GetField("lastState", fields).GetValue(adapter);
+                Check(!adapter.CampaignReady(lastState), "an explicit not-ready state takes effect immediately");
 
                 arm("Clicker");
                 read("{\"t\":\"ack\",\"ref\":23,\"accepted\":1}");
