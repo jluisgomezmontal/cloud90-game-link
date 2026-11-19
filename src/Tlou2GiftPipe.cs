@@ -56,6 +56,8 @@ namespace Cloud90.GameLink
         [DllImport("kernel32.dll", SetLastError = true)]
         static extern bool GetNamedPipeServerProcessId(SafePipeHandle handle, out uint processId);
 
+        // Gift Spawner 1.2.0 pushes state on changes and every 10 s while idle.
+        const long StateTimeoutMs = 12000;
         readonly JavaScriptSerializer json = new JavaScriptSerializer { MaxJsonLength = 65536 };
         readonly Stopwatch clock = Stopwatch.StartNew();
         NamedPipeClientStream pipe;
@@ -110,7 +112,7 @@ namespace Cloud90.GameLink
                 }
                 if (pending != null && now >= pendingUntil)
                     Complete(link, "resultado incierto; el juego no confirmó la aparición");
-                bool inPlay = welcomed && gameReady && now - lastState <= 2500;
+                bool inPlay = CampaignReady(now);
                 if (pending != null && (!inPlay || link.Paused || !commands.LocalConnected))
                     Complete(link, "resultado incierto; invocación interrumpida");
                 if (!inPlay)
@@ -242,6 +244,8 @@ namespace Cloud90.GameLink
                     break;
             }
         }
+
+        internal bool CampaignReady(long now) { return welcomed && gameReady && now - lastState <= StateTimeoutMs; }
 
         bool Matches(Dictionary<string, object> message)
         {

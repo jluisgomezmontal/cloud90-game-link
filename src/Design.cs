@@ -75,7 +75,7 @@ namespace Cloud90.GameLink
                 case "ctrnf": return "Dale a tu chat un lugar en la carrera.";
                 case "cuphead": return "Cada regalo puede cambiar el siguiente intento.";
                 case "kof2002": return "Lleva la energía de tu chat al combate.";
-                case "tlou2": return "Invoca un corredor desde Cloud90 Live durante la campaña.";
+                case "tlou2": return "Tu chat puede invocar enemigos durante la campaña.";
                 default: return "Tu chat se une a la misión.";
             }
         }
