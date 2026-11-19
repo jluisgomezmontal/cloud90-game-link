@@ -14,6 +14,7 @@ and a collapsible activity log:
 
 | Game | How | Needs |
 |---|---|---|
+| **The Last of Us Part II Remastered** | Campaign ambushes through the local Gift Spawner connection. | Compatible Windows build `t2r-pc-1.6.0` and [TLOU2 Gift Spawner 1.2.0](https://www.nexusmods.com/thelastofuspart2/mods/812), installed separately. |
 | **Metal Slug X** | Session-aware MAME adapter with 23 effects plus server roulette: reserve lives, grenades, nine weapons, clock, controls, vision, speed and shield. | MAME 0.289, your own `mslugx.zip` and `neogeo.zip`, offline P1 on foot in normal form. [Setup and native validation](mod/mslugx/README.md). |
 | **Marvel vs. Capcom** | Separate session/epoch-aware MAME adapter; 18 effects plus server roulette, active-fighter health, team super, clock and controls. | MAME 0.289, your own `mvscu.zip` (USA 980123), parent `mvsc.zip` and audited dependencies. Offline P1 vs CPU. [Setup and native validation](mod/mvsc/README.md). |
 | **Super Mario World** | Embedded Lua module through the runtime's opt-in loopback TCP interface. Powers, enemies, timer, lives, movement, shield and roulette. | SuperMarioWorldRecomp 0.15.6 compatible Windows build and stock USA ROM, offline single-player. [Setup and validation](mod/smw/README.md). |
@@ -33,6 +34,19 @@ Nothing of any game is included or distributed: no game files, no ROMs, no BIOS.
 Game cover art is reused from the existing Cloud90 frontend. GTA's game files
 and saved games are not distributed or patched. Third-party loader/library
 notices are included with the native module and the release.
+
+## The Last of Us Part II setup
+
+1. Close the game and download [TLOU2 Gift Spawner 1.2.0](https://www.nexusmods.com/thelastofuspart2/mods/812).
+2. Extract its ZIP into the folder containing `tlou-ii.exe`. Keep `version.dll`,
+   `TLOU2GiftSpawner.dll` and the `TLOU2GiftSpawner` folder next to the executable.
+   The archive includes its loader and is the only mod required for Cloud90 ambushes.
+3. In Game Link, open the game's tab, select that folder and paste the game's token
+   from [Cloud90 Live](https://cloud90.dev/juegos/tlou2). Click **Abrir o conectar juego**
+   and load a campaign save. If you started the game first, Game Link can
+   connect to the running copy from the selected folder.
+4. Press **Insert** in the game to verify that the Gift Spawner menu opens.
+   Return to active gameplay to allow ambushes.
 
 CTR basic effects support the older module. The new gravity, squash, fall and chaos effects require Game Link 1.3.1 and CTR bridge 2. CTR requires Game Link 1.2.2 or later and the updated module with `launcherBridgeVersion=1`.
 Install its module with CTR and its client closed, select the portable folder
