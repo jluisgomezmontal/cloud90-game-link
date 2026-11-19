@@ -48,6 +48,12 @@ notices are included with the native module and the release.
 4. Press **Insert** in the game to verify that the Gift Spawner menu opens.
    Return to active gameplay to allow ambushes.
 
+For larger viewer names closer to human-sized enemies, place the optional
+[`TLOU2GiftSpawner.ini`](mod/tlou2/TLOU2GiftSpawner.ini) next to `tlou-ii.exe`.
+If that file already exists, update only `nametag_scale` and
+`nametag_height_m` in its `[ui]` section. Enemies with a height specified in
+Gift Spawner's catalog, such as the Rat King and dogs, use their own height.
+
 CTR basic effects support the older module. The new gravity, squash, fall and chaos effects require Game Link 1.3.1 and CTR bridge 2. CTR requires Game Link 1.2.2 or later and the updated module with `launcherBridgeVersion=1`.
 Install its module with CTR and its client closed, select the portable folder
 in its tab and launch from Game Link. This opens the original
