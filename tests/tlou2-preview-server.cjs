@@ -20,6 +20,8 @@ const options = (snapshot = state) => {
   const available = snapshot.capabilities?.includes('spawn_runner') ? ['legacy_runner'] : [];
   if (snapshot.capabilities?.includes('enemy_ambush') && Array.isArray(snapshot.ambushOptions))
     available.push(...snapshot.ambushOptions.filter((id) => /^[a-z0-9_]{1,40}$/.test(id)));
+  if (Array.isArray(snapshot.allyOptions))
+    available.push(...snapshot.allyOptions.filter((id) => /^ally_[a-z]{1,30}$/.test(id)));
   return available;
 };
 
@@ -38,7 +40,9 @@ function dispatchScheduled() {
   nextSpawnAt = immediatePreview ? 0 : now + 31000;
   message = `Esperando confirmación del juego para ${enemy}.`;
   send({ type: 'effect', id, ms: 1000, epoch: state.epoch, safe: false, test: true, by: 'Cloud90',
-    ...(enemy === 'legacy_runner' ? { effect: 'spawn_runner' } : { effect: 'enemy_ambush', arg: enemy }) });
+    ...(enemy === 'legacy_runner'
+      ? { effect: 'spawn_runner' }
+      : { effect: enemy.startsWith('ally_') ? 'ally_support' : 'enemy_ambush', arg: enemy }) });
   setTimeout(() => {
     if (pending !== id) return;
     pending = undefined;
@@ -49,20 +53,29 @@ setInterval(dispatchScheduled, 250).unref();
 
 const page = `<!doctype html><html lang="es"><meta charset="utf-8">
 <title>Prueba local de TLOU2</title><main>
-<h1>Emboscada</h1><p>Prueba local de Game Link para The Last of Us Part II.</p>
-<label for="enemy">Enemigo</label><select id="enemy" disabled><option value="">Esperando al juego</option></select>
+<h1>Emboscadas y apoyo</h1><p>Prueba local de Game Link para The Last of Us Part II.</p>
+<label for="enemy">Invocación</label><select id="enemy" disabled><option value="">Esperando al juego</option></select>
 <button id="test" disabled>Programar prueba</button><p id="status" role="status">Esperando Game Link.</p>
 </main><script>
 const button = document.querySelector('#test');
 const status = document.querySelector('#status');
 const enemy = document.querySelector('#enemy');
+const labels = {
+  legacy_runner: 'Corredor (modo anterior)', runner: 'Corredor', clicker: 'Chasqueador',
+  clicker_armored: 'Chasqueador blindado', stalker: 'Acechador', shambler: 'Tambaleante',
+  bloater: 'Hinchado', crawler: 'Reptador', rat_king: 'Rey Rata',
+  rat_king_stalker: 'Acechador del Rey Rata', rat_king_bloater: 'Hinchado del Rey Rata',
+};
+const label = (id) => labels[id] || (id.startsWith('ally_')
+  ? 'Apoyo: ' + id.charAt(5).toUpperCase() + id.slice(6)
+  : id);
 async function refresh() {
   try {
     const state = await fetch('/status').then(r => r.json());
     if (Array.from(enemy.options, option => option.value).join(',') !== state.options.join(',')) {
       const selected = enemy.value;
       enemy.replaceChildren(...(state.options.length
-        ? state.options.map(option => new Option(option, option))
+        ? state.options.map(option => new Option(label(option), option))
         : [new Option('Esperando al juego', '')]));
       if (state.options.includes(selected)) enemy.value = selected;
     }
@@ -150,7 +163,7 @@ server.on('upgrade', (req, socket, head) => {
           readySince = 0;
         }
         if (available.length && message === 'Carga una campaña y conecta el juego.') {
-          message = 'Elige un enemigo, programa la prueba y vuelve al juego.';
+          message = 'Elige un enemigo o aliado, programa la prueba y vuelve al juego.';
         }
         dispatchScheduled();
       } else if (incoming?.type === 'ack' && pending && incoming.id === pending) {

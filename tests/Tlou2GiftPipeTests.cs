@@ -29,11 +29,17 @@ namespace Cloud90.GameLink
 
                 read("{\"t\":\"welcome\",\"protocol\":1,\"mod\":\"1.2.0\",\"build\":\"t2r-pc-1.6.0\",\"presets\":[" +
                      "{\"id\":\"Runner\",\"faction\":\"infected\"},{\"id\":\"Clicker\",\"faction\":\"infected\"}," +
-                     "{\"id\":\"WLF dog\",\"faction\":\"ally\"}]}");
+                     "{\"id\":\"WLF dog\",\"faction\":\"ally\"},{\"id\":\"Ally - Joel\",\"faction\":\"ally\"}]}");
                 read("{\"t\":\"state\",\"gameReady\":true,\"queued\":0,\"alive\":0,\"aliveCap\":5}");
                 Check(adapter.Capabilities().SequenceEqual(new[]
-                    { "spawn_runner", "enemy_ambush", "enemy_ambush_ready", "enemy_ambush:clicker", "enemy_ambush:runner" }),
+                    { "spawn_runner", "enemy_ambush", "enemy_ambush_ready", "ally_support:ally_joel", "enemy_ambush:clicker", "enemy_ambush:runner" }),
                     "only the exact allowlisted preset and faction are advertised");
+                var reject = typeof(Tlou2GiftPipe).GetMethod("RejectionReason", fields);
+                var ally = new Inbox.Item { Id = "ally", Effect = "ally_support", Epoch = adapter.Epoch, Safe = true };
+                Check(reject.Invoke(adapter, new object[] { ally, "ally_joel", 0L, 8000d, true }) == null,
+                    "allied support works with Sin morir enabled");
+                Check(reject.Invoke(adapter, new object[] { ally, "runner", 0L, 8000d, true }) != null,
+                    "allied support cannot spawn a hostile preset");
                 long lastState = (long)typeof(Tlou2GiftPipe).GetField("lastState", fields).GetValue(adapter);
                 Check(adapter.CampaignReady(lastState + 10000), "an unchanged campaign stays ready between state heartbeats");
                 Check(!adapter.CampaignReady(lastState + 12001), "a missed state heartbeat expires campaign readiness");
