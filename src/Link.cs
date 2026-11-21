@@ -404,9 +404,13 @@ namespace Cloud90.GameLink
             {
                 var reported = capabilities;
                 string prefix = Tlou2GiftPipe.OptionPrefix;
-                message["capabilities"] = reported.Where(id => !id.StartsWith(prefix, StringComparison.Ordinal)).ToArray();
+                string allyPrefix = Tlou2GiftPipe.AllyOptionPrefix;
+                message["capabilities"] = reported.Where(id => !id.StartsWith(prefix, StringComparison.Ordinal) &&
+                    !id.StartsWith(allyPrefix, StringComparison.Ordinal)).ToArray();
                 message["ambushOptions"] = reported.Where(id => id.StartsWith(prefix, StringComparison.Ordinal))
                     .Select(id => id.Substring(prefix.Length)).ToArray();
+                message["allyOptions"] = reported.Where(id => id.StartsWith(allyPrefix, StringComparison.Ordinal))
+                    .Select(id => id.Substring(allyPrefix.Length)).ToArray();
             }
             return Send(message);
         }

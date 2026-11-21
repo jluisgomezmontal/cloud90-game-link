@@ -17,6 +17,7 @@ namespace Cloud90.GameLink
     {
         internal const string Version = "cloud90-game-link-tlou2-3";
         internal const string OptionPrefix = "enemy_ambush:";
+        internal const string AllyOptionPrefix = "ally_support:";
         readonly Random spawnDistance = new Random();
 
         sealed class Preset
@@ -51,6 +52,20 @@ namespace Cloud90.GameLink
             { "enemy_ellie", new Preset("Enemy - Ellie (WLF)", "wlf") },
             { "seraphite_brute_boss", new Preset("Seraphite brute - boss", "seraphite") },
             { "seraphite_archer_boss", new Preset("Seraphite archer - boss", "seraphite") },
+            { "ally_joel", new Preset("Ally - Joel", "ally") },
+            { "ally_lev", new Preset("Ally - Lev", "ally") },
+            { "ally_tommy", new Preset("Ally - Tommy", "ally") },
+            { "ally_dina", new Preset("Ally - Dina", "ally") },
+            { "ally_jesse", new Preset("Ally - Jesse", "ally") },
+            { "ally_jerry", new Preset("Ally - Jerry", "ally") },
+            { "ally_yara", new Preset("Ally - Yara", "ally") },
+            { "ally_manny", new Preset("Ally - Manny", "ally") },
+            { "ally_mel", new Preset("Ally - Mel", "ally") },
+            { "ally_nora", new Preset("Ally - Nora", "ally") },
+            { "ally_owen", new Preset("Ally - Owen", "ally") },
+            { "ally_abby", new Preset("Ally - Abby", "ally") },
+            { "ally_ellie", new Preset("Ally - Ellie", "ally") },
+            { "ally_alice", new Preset("Ally - dog (Alice)", "ally") },
         };
 
         [DllImport("kernel32.dll", SetLastError = true)]
@@ -82,9 +97,10 @@ namespace Cloud90.GameLink
             if (canSpawn && availableOptions.Contains("runner")) result.Add("spawn_runner");
             if (enabled.Length != 0)
             {
-                result.Add("enemy_ambush");
+                if (enabled.Any(id => Presets[id].Faction != "ally")) result.Add("enemy_ambush");
                 if (canSpawn && pending == null) result.Add("enemy_ambush_ready");
-                result.AddRange(enabled.Select(id => OptionPrefix + id));
+                result.AddRange(enabled.Select(id =>
+                    (Presets[id].Faction == "ally" ? AllyOptionPrefix : OptionPrefix) + id));
             }
             return result.ToArray();
         }
@@ -127,7 +143,7 @@ namespace Cloud90.GameLink
                 {
                     var remaining = 8000 - (DateTime.UtcNow - item.Sent).TotalMilliseconds;
                     string option = item.Effect == "spawn_runner" ? "runner" :
-                        item.Effect == "enemy_ambush" ? item.Arg : "";
+                        (item.Effect == "enemy_ambush" || item.Effect == "ally_support") ? item.Arg : "";
                     if (link.Paused || !commands.LocalConnected) break;
                     string reason = RejectionReason(item, option, now, remaining, commands.LocalNoDeath);
                     if (reason != null)
@@ -167,8 +183,10 @@ namespace Cloud90.GameLink
             if (sentIds.Contains(item.Id)) return "la orden ya se envió";
             if (item.Epoch != Epoch) return "la partida cambió antes de invocar";
             if (remaining < 1000) return "la orden de invocación venció";
-            if (item.Safe || noDeath) return "la protección Sin morir está activa";
-            if (!availableOptions.Contains(option)) return "Gift Spawner no ofrece este enemigo";
+            if (item.Effect != "ally_support" && (item.Safe || noDeath)) return "la protección Sin morir está activa";
+            if (!availableOptions.Contains(option) ||
+                (Presets[option].Faction == "ally") != (item.Effect == "ally_support"))
+                return "Gift Spawner no ofrece esta invocación";
             if (item.Effect == "spawn_runner" && now < nextSpawn)
                 return "espera " + ((nextSpawn - now + 999) / 1000) + " s entre invocaciones";
             return null;
